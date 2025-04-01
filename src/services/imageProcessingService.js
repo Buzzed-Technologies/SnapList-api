@@ -133,7 +133,7 @@ async function detectObjectsInImage(imagePath) {
     
     // Call OpenAI API for object detection
     const response = await openai.chat.completions.create({
-      model: "gpt-4-vision-preview",
+      model: "gpt-4o",
       messages: [
         {
           role: "user",
@@ -190,7 +190,7 @@ async function generateListingDetails(imagePath) {
     
     // Call OpenAI API for listing generation with an enhanced prompt
     const response = await openai.chat.completions.create({
-      model: "gpt-4-vision-preview",
+      model: "gpt-4o",
       messages: [
         {
           role: "user",
