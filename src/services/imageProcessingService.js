@@ -197,7 +197,7 @@ async function generateListingDetails(imagePath) {
           content: [
             {
               type: "text",
-              text: "Generate a detailed marketplace listing for this item. Include a concise title, detailed description, suggested price, category, brand (if identifiable), size (if applicable), and color. Format your response as a valid JSON object with title, description, price, category, brand, size, and color fields. The price should be a reasonable market value in USD."
+              text: "Analyze this image of an item being listed for sale. Generate a detailed marketplace listing with the following information:\n\n1. Title: A concise, descriptive title (max 80 characters)\n2. Description: A detailed description including condition, features, and selling points (100-200 words)\n3. Price: A fair market value in USD (just the number)\n4. Original Price: Estimated original retail price in USD (just the number)\n5. Category: The most appropriate category for this item\n6. Brand: The brand name if identifiable\n7. Size: Size information if applicable (clothing, furniture, etc.)\n8. Color: The primary color(s) of the item\n9. Condition: A rating of the item's condition (New, Like New, Good, Fair, Poor)\n\nFormat your response as a valid JSON object with these exact field names: title, description, price, original_price, category, brand, size, color, condition."
             },
             {
               type: "image_url",
@@ -208,7 +208,7 @@ async function generateListingDetails(imagePath) {
           ]
         }
       ],
-      max_tokens: 1000,
+      max_tokens: 1500,
       response_format: { type: "json_object" }
     });
     
@@ -216,19 +216,36 @@ async function generateListingDetails(imagePath) {
     const content = response.choices[0].message.content;
     const listingDetails = JSON.parse(content);
     
+    // Ensure numeric values for prices
+    listingDetails.price = parseFloat(listingDetails.price) || 0;
+    listingDetails.original_price = parseFloat(listingDetails.original_price) || 0;
+    
+    // Apply some basic validation/sanitization
     return {
-      title: listingDetails.title,
-      description: listingDetails.description,
-      price: parseFloat(listingDetails.price.replace(/[^0-9.]/g, '')), // Extract numeric price
-      original_price: parseFloat(listingDetails.price.replace(/[^0-9.]/g, '')),
+      title: listingDetails.title?.substring(0, 100) || "",
+      description: listingDetails.description || "",
+      price: listingDetails.price,
+      originalPrice: listingDetails.original_price,
       category: listingDetails.category || null,
       brand: listingDetails.brand || null,
       size: listingDetails.size || null,
-      color: listingDetails.color || null
+      color: listingDetails.color || null,
+      condition: listingDetails.condition || null
     };
   } catch (error) {
     console.error('Error generating listing details:', error);
-    throw new Error(`Failed to generate listing details: ${error.message}`);
+    // Return default values on error
+    return {
+      title: "Untitled Item",
+      description: "No description available",
+      price: 0,
+      originalPrice: 0,
+      category: null,
+      brand: null,
+      size: null,
+      color: null,
+      condition: null
+    };
   }
 }
 

@@ -162,6 +162,56 @@ router.post('/analyze', async (req, res) => {
 });
 
 /**
+ * @route GET /api/images/:id/analyze
+ * @desc Analyze an already uploaded image by ID
+ * @access Public
+ */
+router.get('/:id/analyze', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    if (!id) {
+      return res.status(400).json({ success: false, message: 'Image ID is required' });
+    }
+    
+    // Get image URL from Supabase
+    const { data, error } = await supabase.storage
+      .from(BUCKET_NAME)
+      .getPublicUrl(`uploads/${id}`);
+      
+    if (error) {
+      return res.status(404).json({ success: false, message: 'Image not found' });
+    }
+    
+    const imageUrl = data.publicUrl;
+    
+    // Download image from Supabase URL to temp file
+    const response = await fetch(imageUrl);
+    if (!response.ok) {
+      return res.status(404).json({ success: false, message: 'Failed to download image' });
+    }
+    
+    const imageBuffer = await response.arrayBuffer();
+    const tempFilePath = path.join(tempDir, `temp-${uuidv4()}${path.extname(imageUrl)}`);
+    fs.writeFileSync(tempFilePath, Buffer.from(imageBuffer));
+    
+    // Generate listing details from the image
+    const listingDetails = await imageProcessingService.generateListingDetails(tempFilePath);
+    
+    // Delete temporary file
+    fs.unlinkSync(tempFilePath);
+    
+    res.status(200).json({
+      success: true,
+      listingDetails
+    });
+  } catch (error) {
+    console.error('Error analyzing image:', error);
+    res.status(500).json({ success: false, message: `Image analysis failed: ${error.message}` });
+  }
+});
+
+/**
  * @route DELETE /api/images/:filename
  * @desc Delete an uploaded image
  * @access Public
