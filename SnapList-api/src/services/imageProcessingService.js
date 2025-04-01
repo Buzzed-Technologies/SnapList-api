@@ -149,7 +149,7 @@ async function generateListingDetails(imagePath) {
           content: [
             {
               type: "text",
-              text: "Generate a detailed marketplace listing for this item. Include a concise title, detailed description, and suggested price. Format your response as a valid JSON object with title, description, and price fields. The price should be a reasonable market value in USD."
+              text: "Generate a detailed marketplace listing for this item. Include a concise title, detailed description, suggested price, category, brand (if identifiable), size (if applicable), and color. Format your response as a valid JSON object with title, description, price, category, brand, size, and color fields. The price should be a reasonable market value in USD."
             },
             {
               type: "image_url",
@@ -172,7 +172,11 @@ async function generateListingDetails(imagePath) {
       title: listingDetails.title,
       description: listingDetails.description,
       price: parseFloat(listingDetails.price.replace(/[^0-9.]/g, '')), // Extract numeric price
-      original_price: parseFloat(listingDetails.price.replace(/[^0-9.]/g, ''))
+      original_price: parseFloat(listingDetails.price.replace(/[^0-9.]/g, '')),
+      category: listingDetails.category || null,
+      brand: listingDetails.brand || null,
+      size: listingDetails.size || null,
+      color: listingDetails.color || null
     };
   } catch (error) {
     console.error('Error generating listing details:', error);
