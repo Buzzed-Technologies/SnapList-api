@@ -4,7 +4,11 @@ const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const openai = require('../config/openai');
 
-const UPLOAD_DIR = path.join(__dirname, '../../', process.env.UPLOAD_DIR || 'uploads');
+// Define uploads directory based on environment
+const isLambda = !!process.env.AWS_LAMBDA_FUNCTION_NAME;
+const UPLOAD_DIR = isLambda 
+  ? path.join('/tmp', process.env.UPLOAD_DIR || 'uploads') // Use /tmp in Lambda
+  : path.join(__dirname, '../../', process.env.UPLOAD_DIR || 'uploads'); // Use local path otherwise
 
 // Ensure upload directory exists
 if (!fs.existsSync(UPLOAD_DIR)) {
