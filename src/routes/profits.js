@@ -58,6 +58,86 @@ router.get('/', async (req, res) => {
 });
 
 /**
+ * @route GET /api/profits/summary
+ * @desc Get a summary of profits for a user
+ * @access Public
+ */
+router.get('/summary', async (req, res) => {
+  try {
+    const { user_id } = req.query;
+    
+    if (!user_id) {
+      return res.status(400).json({ success: false, message: 'User ID is required' });
+    }
+    
+    // Get all profits for the user
+    const { data: profits, error } = await supabase
+      .from('profits')
+      .select('amount, status, platform, created_at')
+      .eq('user_id', user_id);
+    
+    if (error) {
+      console.error('Error fetching profits for summary:', error);
+      return res.status(500).json({ success: false, message: `Failed to fetch profits: ${error.message}` });
+    }
+    
+    // Calculate summary
+    const summary = {
+      totalProfit: 0,
+      pendingProfit: 0,
+      completedProfit: 0,
+      byPlatform: {
+        ebay: 0,
+        facebook: 0
+      },
+      byMonth: {}
+    };
+    
+    profits.forEach(profit => {
+      const amount = parseFloat(profit.amount);
+      summary.totalProfit += amount;
+      
+      if (profit.status === 'pending') {
+        summary.pendingProfit += amount;
+      } else {
+        summary.completedProfit += amount;
+      }
+      
+      if (profit.platform === 'ebay') {
+        summary.byPlatform.ebay += amount;
+      } else if (profit.platform === 'facebook') {
+        summary.byPlatform.facebook += amount;
+      }
+      
+      // Group by month
+      const date = new Date(profit.created_at);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      if (!summary.byMonth[monthKey]) {
+        summary.byMonth[monthKey] = 0;
+      }
+      summary.byMonth[monthKey] += amount;
+    });
+    
+    // Convert byMonth to array for easier frontend processing
+    const byMonthArray = Object.entries(summary.byMonth)
+      .map(([month, amount]) => ({ month, amount }))
+      .sort((a, b) => a.month.localeCompare(b.month));
+    
+    res.status(200).json({
+      success: true,
+      summary: {
+        ...summary,
+        byMonth: byMonthArray,
+        totalCount: profits.length
+      }
+    });
+  } catch (error) {
+    console.error('Error in GET /profits/summary:', error);
+    res.status(500).json({ success: false, message: `Failed to fetch profit summary: ${error.message}` });
+  }
+});
+
+/**
  * @route GET /api/profits/:id
  * @desc Get a specific profit
  * @access Public
@@ -146,86 +226,6 @@ router.put('/:id', async (req, res) => {
   } catch (error) {
     console.error(`Error in PUT /profits/${req.params.id}:`, error);
     res.status(500).json({ success: false, message: `Failed to update profit: ${error.message}` });
-  }
-});
-
-/**
- * @route GET /api/profits/summary
- * @desc Get a summary of profits for a user
- * @access Public
- */
-router.get('/summary', async (req, res) => {
-  try {
-    const { user_id } = req.query;
-    
-    if (!user_id) {
-      return res.status(400).json({ success: false, message: 'User ID is required' });
-    }
-    
-    // Get all profits for the user
-    const { data: profits, error } = await supabase
-      .from('profits')
-      .select('amount, status, platform, created_at')
-      .eq('user_id', user_id);
-    
-    if (error) {
-      console.error('Error fetching profits for summary:', error);
-      return res.status(500).json({ success: false, message: `Failed to fetch profits: ${error.message}` });
-    }
-    
-    // Calculate summary
-    const summary = {
-      totalProfit: 0,
-      pendingProfit: 0,
-      completedProfit: 0,
-      byPlatform: {
-        ebay: 0,
-        facebook: 0
-      },
-      byMonth: {}
-    };
-    
-    profits.forEach(profit => {
-      const amount = parseFloat(profit.amount);
-      summary.totalProfit += amount;
-      
-      if (profit.status === 'pending') {
-        summary.pendingProfit += amount;
-      } else {
-        summary.completedProfit += amount;
-      }
-      
-      if (profit.platform === 'ebay') {
-        summary.byPlatform.ebay += amount;
-      } else if (profit.platform === 'facebook') {
-        summary.byPlatform.facebook += amount;
-      }
-      
-      // Group by month
-      const date = new Date(profit.created_at);
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      if (!summary.byMonth[monthKey]) {
-        summary.byMonth[monthKey] = 0;
-      }
-      summary.byMonth[monthKey] += amount;
-    });
-    
-    // Convert byMonth to array for easier frontend processing
-    const byMonthArray = Object.entries(summary.byMonth)
-      .map(([month, amount]) => ({ month, amount }))
-      .sort((a, b) => a.month.localeCompare(b.month));
-    
-    res.status(200).json({
-      success: true,
-      summary: {
-        ...summary,
-        byMonth: byMonthArray,
-        totalCount: profits.length
-      }
-    });
-  } catch (error) {
-    console.error('Error in GET /profits/summary:', error);
-    res.status(500).json({ success: false, message: `Failed to fetch profit summary: ${error.message}` });
   }
 });
 
