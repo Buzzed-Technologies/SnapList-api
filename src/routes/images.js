@@ -56,18 +56,48 @@ router.post('/upload', upload.single('image'), async (req, res) => {
     const originalPath = req.file.path;
     const optimizedUrl = await imageProcessingService.optimizeImage(originalPath);
     
+    // Check if auto_analyze flag is set
+    const shouldAutoAnalyze = req.body.auto_analyze === 'true';
+    
     // Delete temporary file
     fs.unlinkSync(originalPath);
     
+    // Prepare response data
+    const imageData = {
+      url: optimizedUrl,
+      filename: path.basename(optimizedUrl),
+      originalName: req.file.originalname,
+      mimeType: req.file.mimetype,
+      size: req.file.size
+    };
+    
+    // Auto analyze if requested
+    let listingDetails = null;
+    if (shouldAutoAnalyze) {
+      try {
+        // Download the image from the optimized URL to analyze it
+        const response = await fetch(optimizedUrl);
+        if (response.ok) {
+          const imageBuffer = await response.arrayBuffer();
+          const tempFilePath = path.join(tempDir, `temp-${uuidv4()}${path.extname(optimizedUrl)}`);
+          fs.writeFileSync(tempFilePath, Buffer.from(imageBuffer));
+          
+          // Generate listing details from the image
+          listingDetails = await imageProcessingService.generateListingDetails(tempFilePath);
+          
+          // Delete temporary file
+          fs.unlinkSync(tempFilePath);
+        }
+      } catch (analyzeError) {
+        console.error('Error auto-analyzing image:', analyzeError);
+        // Continue without failing the whole request
+      }
+    }
+    
     res.status(200).json({
       success: true,
-      image: {
-        url: optimizedUrl,
-        filename: path.basename(optimizedUrl),
-        originalName: req.file.originalname,
-        mimeType: req.file.mimetype,
-        size: req.file.size
-      }
+      image: imageData,
+      listingDetails: listingDetails
     });
   } catch (error) {
     console.error('Error uploading image:', error);
@@ -123,47 +153,8 @@ router.post('/process', async (req, res) => {
 });
 
 /**
- * @route POST /api/images/analyze
- * @desc Analyze an image and generate listing details
- * @access Public
- */
-router.post('/analyze', async (req, res) => {
-  try {
-    const { imageUrl } = req.body;
-    
-    if (!imageUrl) {
-      return res.status(400).json({ success: false, message: 'Image URL is required' });
-    }
-    
-    // Download image from Supabase URL to temp file
-    const response = await fetch(imageUrl);
-    if (!response.ok) {
-      return res.status(404).json({ success: false, message: 'Failed to download image' });
-    }
-    
-    const imageBuffer = await response.arrayBuffer();
-    const tempFilePath = path.join(tempDir, `temp-${uuidv4()}${path.extname(imageUrl)}`);
-    fs.writeFileSync(tempFilePath, Buffer.from(imageBuffer));
-    
-    // Generate listing details from the image
-    const listingDetails = await imageProcessingService.generateListingDetails(tempFilePath);
-    
-    // Delete temporary file
-    fs.unlinkSync(tempFilePath);
-    
-    res.status(200).json({
-      success: true,
-      listingDetails
-    });
-  } catch (error) {
-    console.error('Error analyzing image:', error);
-    res.status(500).json({ success: false, message: `Image analysis failed: ${error.message}` });
-  }
-});
-
-/**
  * @route GET /api/images/:id/analyze
- * @desc Analyze an already uploaded image by ID
+ * @desc Analyze an image and generate listing details
  * @access Public
  */
 router.get('/:id/analyze', async (req, res) => {
@@ -174,25 +165,23 @@ router.get('/:id/analyze', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Image ID is required' });
     }
     
-    // Get image URL from Supabase
-    const { data, error } = await supabase.storage
+    // Get the image URL from storage
+    const { data: publicUrl } = supabase.storage
       .from(BUCKET_NAME)
       .getPublicUrl(`uploads/${id}`);
-      
-    if (error) {
+    
+    if (!publicUrl || !publicUrl.publicUrl) {
       return res.status(404).json({ success: false, message: 'Image not found' });
     }
     
-    const imageUrl = data.publicUrl;
-    
-    // Download image from Supabase URL to temp file
-    const response = await fetch(imageUrl);
+    // Download image from URL to temp file
+    const response = await fetch(publicUrl.publicUrl);
     if (!response.ok) {
       return res.status(404).json({ success: false, message: 'Failed to download image' });
     }
     
     const imageBuffer = await response.arrayBuffer();
-    const tempFilePath = path.join(tempDir, `temp-${uuidv4()}${path.extname(imageUrl)}`);
+    const tempFilePath = path.join(tempDir, `temp-${uuidv4()}${path.extname(id)}`);
     fs.writeFileSync(tempFilePath, Buffer.from(imageBuffer));
     
     // Generate listing details from the image

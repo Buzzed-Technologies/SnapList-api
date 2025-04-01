@@ -107,7 +107,13 @@ router.post('/', async (req, res) => {
       title, 
       description, 
       price, 
-      image_urls 
+      image_urls,
+      platform,
+      condition,
+      category,
+      brand,
+      size,
+      color 
     } = req.body;
     
     // Validate required fields
@@ -145,6 +151,12 @@ router.post('/', async (req, res) => {
         min_price: minPrice,
         image_urls,
         status: 'active',
+        condition: condition || 'Used - Good',
+        category: category || null,
+        brand: brand || null,
+        size: size || null,
+        color: color || null,
+        platform: platform || 'both', // Default to both if not specified
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         last_price_update: new Date().toISOString()
@@ -157,11 +169,21 @@ router.post('/', async (req, res) => {
       return res.status(500).json({ success: false, message: `Failed to create listing: ${error.message}` });
     }
     
-    // Create listing on eBay
-    const ebayResult = await ebayService.createEbayListing(listing, image_urls);
+    // Always post to both platforms if platform is 'both' or not specified
+    const shouldPostToEbay = platform === 'both' || platform === 'eBay' || !platform;
+    const shouldPostToFacebook = platform === 'both' || platform === 'Facebook Marketplace' || !platform;
     
-    // Create listing on Facebook Marketplace
-    const facebookResult = await facebookService.createFacebookListing(listing, image_urls);
+    // Create listing on eBay if applicable
+    let ebayResult = { success: false, message: 'eBay posting skipped' };
+    if (shouldPostToEbay) {
+      ebayResult = await ebayService.createEbayListing(listing, image_urls);
+    }
+    
+    // Create listing on Facebook Marketplace if applicable
+    let facebookResult = { success: false, message: 'Facebook posting skipped' };
+    if (shouldPostToFacebook) {
+      facebookResult = await facebookService.createFacebookListing(listing, image_urls);
+    }
     
     // Update our listing with marketplace IDs
     const updates = {};

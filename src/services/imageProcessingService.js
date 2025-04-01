@@ -188,7 +188,7 @@ async function generateListingDetails(imagePath) {
     const imageBuffer = fs.readFileSync(imagePath);
     const base64Image = imageBuffer.toString('base64');
     
-    // Call OpenAI API for listing generation
+    // Call OpenAI API for listing generation with an enhanced prompt
     const response = await openai.chat.completions.create({
       model: "gpt-4-vision-preview",
       messages: [
@@ -197,7 +197,7 @@ async function generateListingDetails(imagePath) {
           content: [
             {
               type: "text",
-              text: "Analyze this image of an item being listed for sale. Generate a detailed marketplace listing with the following information:\n\n1. Title: A concise, descriptive title (max 80 characters)\n2. Description: A detailed description including condition, features, and selling points (100-200 words)\n3. Price: A fair market value in USD (just the number)\n4. Original Price: Estimated original retail price in USD (just the number)\n5. Category: The most appropriate category for this item\n6. Brand: The brand name if identifiable\n7. Size: Size information if applicable (clothing, furniture, etc.)\n8. Color: The primary color(s) of the item\n9. Condition: A rating of the item's condition (New, Like New, Good, Fair, Poor)\n\nFormat your response as a valid JSON object with these exact field names: title, description, price, original_price, category, brand, size, color, condition."
+              text: "You are an expert marketplace seller helping to create a compelling listing that will attract buyers on platforms like eBay and Facebook Marketplace. Analyze this image carefully and generate a professional marketplace listing.\n\nPlease include:\n1. A concise, SEO-friendly title that includes key product details (30-80 characters)\n2. A detailed, well-structured description highlighting features, condition, measurements, and selling points (100-200 words)\n3. A fair market price in USD (be specific with the exact dollar amount)\n4. The most appropriate category for the item\n5. Brand name (if identifiable)\n6. Size information (if applicable)\n7. Primary color and any secondary colors\n\nFormat your response as a valid JSON object with these fields: title, description, price (as a string with dollar sign), category, brand, size, and color."
             },
             {
               type: "image_url",
@@ -216,36 +216,19 @@ async function generateListingDetails(imagePath) {
     const content = response.choices[0].message.content;
     const listingDetails = JSON.parse(content);
     
-    // Ensure numeric values for prices
-    listingDetails.price = parseFloat(listingDetails.price) || 0;
-    listingDetails.original_price = parseFloat(listingDetails.original_price) || 0;
-    
-    // Apply some basic validation/sanitization
     return {
-      title: listingDetails.title?.substring(0, 100) || "",
-      description: listingDetails.description || "",
-      price: listingDetails.price,
-      originalPrice: listingDetails.original_price,
+      title: listingDetails.title,
+      description: listingDetails.description,
+      price: parseFloat(listingDetails.price.replace(/[^0-9.]/g, '')), // Extract numeric price
+      original_price: parseFloat(listingDetails.price.replace(/[^0-9.]/g, '')),
       category: listingDetails.category || null,
       brand: listingDetails.brand || null,
       size: listingDetails.size || null,
-      color: listingDetails.color || null,
-      condition: listingDetails.condition || null
+      color: listingDetails.color || null
     };
   } catch (error) {
     console.error('Error generating listing details:', error);
-    // Return default values on error
-    return {
-      title: "Untitled Item",
-      description: "No description available",
-      price: 0,
-      originalPrice: 0,
-      category: null,
-      brand: null,
-      size: null,
-      color: null,
-      condition: null
-    };
+    throw new Error(`Failed to generate listing details: ${error.message}`);
   }
 }
 
