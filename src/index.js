@@ -11,6 +11,7 @@ const usersRoutes = require('./routes/users');
 const listingsRoutes = require('./routes/listings');
 const profitsRoutes = require('./routes/profits');
 const imagesRoutes = require('./routes/images');
+const payoutsRoutes = require('./routes/payouts');
 
 // Import price reduction service
 const { schedulePriceReductions } = require('./services/priceService');
@@ -34,6 +35,7 @@ app.use('/api/users', usersRoutes);
 app.use('/api/listings', listingsRoutes);
 app.use('/api/profits', profitsRoutes);
 app.use('/api/images', imagesRoutes);
+app.use('/api/payouts', payoutsRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {
