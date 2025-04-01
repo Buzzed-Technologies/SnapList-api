@@ -4,6 +4,7 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 const scheduler = require('node-schedule');
+const os = require('os');
 
 // Import routes
 const usersRoutes = require('./routes/users');
@@ -17,17 +18,16 @@ const { schedulePriceReductions } = require('./services/priceService');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Create uploads directory if it doesn't exist
-const uploadsDir = path.join(__dirname, '..', process.env.UPLOAD_DIR || 'uploads');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
+// Create temporary directory for file uploads if needed
+const tempDir = path.join(os.tmpdir(), 'snaplist-uploads');
+if (!fs.existsSync(tempDir)) {
+  fs.mkdirSync(tempDir, { recursive: true });
 }
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use('/uploads', express.static(uploadsDir));
 
 // Routes
 app.use('/api/users', usersRoutes);

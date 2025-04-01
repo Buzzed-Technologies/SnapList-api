@@ -4,17 +4,20 @@ const path = require('path');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const imageProcessingService = require('../services/imageProcessingService');
+const supabase = require('../config/supabase');
+const os = require('os');
 
 const router = express.Router();
 
-// Configure multer for file uploads
+// Configure multer for temporary file uploads
+const tempDir = path.join(os.tmpdir(), 'snaplist-uploads');
+if (!fs.existsSync(tempDir)) {
+  fs.mkdirSync(tempDir, { recursive: true });
+}
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadDir = path.join(__dirname, '../../', process.env.UPLOAD_DIR || 'uploads');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
+    cb(null, tempDir);
   },
   filename: (req, file, cb) => {
     const uniqueFilename = `${Date.now()}-${uuidv4()}${path.extname(file.originalname)}`;
@@ -36,6 +39,8 @@ const upload = multer({
   }
 });
 
+const BUCKET_NAME = 'snaplist-images';
+
 /**
  * @route POST /api/images/upload
  * @desc Upload an image
@@ -49,17 +54,16 @@ router.post('/upload', upload.single('image'), async (req, res) => {
     
     // Optimize the uploaded image
     const originalPath = req.file.path;
-    const optimizedPath = await imageProcessingService.optimizeImage(originalPath);
+    const optimizedUrl = await imageProcessingService.optimizeImage(originalPath);
     
-    // Construct URLs for the images
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
-    const imageUrl = `${baseUrl}/uploads/${path.basename(optimizedPath)}`;
+    // Delete temporary file
+    fs.unlinkSync(originalPath);
     
     res.status(200).json({
       success: true,
       image: {
-        url: imageUrl,
-        filename: path.basename(optimizedPath),
+        url: optimizedUrl,
+        filename: path.basename(optimizedUrl),
         originalName: req.file.originalname,
         mimeType: req.file.mimetype,
         size: req.file.size
@@ -78,29 +82,31 @@ router.post('/upload', upload.single('image'), async (req, res) => {
  */
 router.post('/process', async (req, res) => {
   try {
-    const { imagePath } = req.body;
+    const { imageUrl } = req.body;
     
-    if (!imagePath) {
-      return res.status(400).json({ success: false, message: 'Image path is required' });
+    if (!imageUrl) {
+      return res.status(400).json({ success: false, message: 'Image URL is required' });
     }
     
-    // Convert relative URL to file path
-    const uploadDir = path.join(__dirname, '../../', process.env.UPLOAD_DIR || 'uploads');
-    const filename = path.basename(imagePath);
-    const filePath = path.join(uploadDir, filename);
-    
-    // Check if file exists
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ success: false, message: 'Image file not found' });
+    // Download image from Supabase URL to temp file
+    const response = await fetch(imageUrl);
+    if (!response.ok) {
+      return res.status(404).json({ success: false, message: 'Failed to download image' });
     }
+    
+    const imageBuffer = await response.arrayBuffer();
+    const tempFilePath = path.join(tempDir, `temp-${uuidv4()}${path.extname(imageUrl)}`);
+    fs.writeFileSync(tempFilePath, Buffer.from(imageBuffer));
     
     // Process the image
-    const processedImages = await imageProcessingService.processImage(filePath);
+    const processedImages = await imageProcessingService.processImage(tempFilePath);
     
-    // Generate URLs for the processed images
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    // Delete temporary file
+    fs.unlinkSync(tempFilePath);
+    
+    // Return the processed image URLs
     const processedImageUrls = processedImages.map(img => ({
-      url: `${baseUrl}/uploads/${path.basename(img.processedPath)}`,
+      url: img.publicUrl,
       coordinates: img.coordinates,
       metadata: img.metadata
     }));
@@ -123,24 +129,27 @@ router.post('/process', async (req, res) => {
  */
 router.post('/analyze', async (req, res) => {
   try {
-    const { imagePath } = req.body;
+    const { imageUrl } = req.body;
     
-    if (!imagePath) {
-      return res.status(400).json({ success: false, message: 'Image path is required' });
+    if (!imageUrl) {
+      return res.status(400).json({ success: false, message: 'Image URL is required' });
     }
     
-    // Convert relative URL to file path
-    const uploadDir = path.join(__dirname, '../../', process.env.UPLOAD_DIR || 'uploads');
-    const filename = path.basename(imagePath);
-    const filePath = path.join(uploadDir, filename);
-    
-    // Check if file exists
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ success: false, message: 'Image file not found' });
+    // Download image from Supabase URL to temp file
+    const response = await fetch(imageUrl);
+    if (!response.ok) {
+      return res.status(404).json({ success: false, message: 'Failed to download image' });
     }
+    
+    const imageBuffer = await response.arrayBuffer();
+    const tempFilePath = path.join(tempDir, `temp-${uuidv4()}${path.extname(imageUrl)}`);
+    fs.writeFileSync(tempFilePath, Buffer.from(imageBuffer));
     
     // Generate listing details from the image
-    const listingDetails = await imageProcessingService.generateListingDetails(filePath);
+    const listingDetails = await imageProcessingService.generateListingDetails(tempFilePath);
+    
+    // Delete temporary file
+    fs.unlinkSync(tempFilePath);
     
     res.status(200).json({
       success: true,
@@ -157,7 +166,7 @@ router.post('/analyze', async (req, res) => {
  * @desc Delete an uploaded image
  * @access Public
  */
-router.delete('/:filename', (req, res) => {
+router.delete('/:filename', async (req, res) => {
   try {
     const { filename } = req.params;
     
@@ -165,20 +174,14 @@ router.delete('/:filename', (req, res) => {
       return res.status(400).json({ success: false, message: 'Filename is required' });
     }
     
-    // Prevent directory traversal attacks
-    const sanitizedFilename = path.basename(filename);
+    // Delete from Supabase Storage
+    const { error } = await supabase.storage
+      .from(BUCKET_NAME)
+      .remove([`uploads/${filename}`]);
     
-    // Get file path
-    const uploadDir = path.join(__dirname, '../../', process.env.UPLOAD_DIR || 'uploads');
-    const filePath = path.join(uploadDir, sanitizedFilename);
-    
-    // Check if file exists
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ success: false, message: 'Image file not found' });
+    if (error) {
+      return res.status(500).json({ success: false, message: `Failed to delete image: ${error.message}` });
     }
-    
-    // Delete the file
-    fs.unlinkSync(filePath);
     
     res.status(200).json({
       success: true,

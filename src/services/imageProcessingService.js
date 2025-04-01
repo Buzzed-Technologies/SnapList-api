@@ -3,16 +3,44 @@ const path = require('path');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const openai = require('../config/openai');
+const supabase = require('../config/supabase');
+const os = require('os');
 
-// Define uploads directory based on environment
-const isLambda = !!process.env.AWS_LAMBDA_FUNCTION_NAME;
-const UPLOAD_DIR = isLambda 
-  ? path.join('/tmp', process.env.UPLOAD_DIR || 'uploads') // Use /tmp in Lambda
-  : path.join(__dirname, '../../', process.env.UPLOAD_DIR || 'uploads'); // Use local path otherwise
+const BUCKET_NAME = 'snaplist-images';
+const TMP_DIR = os.tmpdir();
 
-// Ensure upload directory exists
-if (!fs.existsSync(UPLOAD_DIR)) {
-  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+// Create a temporary directory for image processing
+if (!fs.existsSync(TMP_DIR)) {
+  fs.mkdirSync(TMP_DIR, { recursive: true });
+}
+
+/**
+ * Upload file to Supabase Storage
+ * @param {Buffer} buffer - File buffer
+ * @param {string} fileName - File name
+ * @returns {Promise<string>} - Public URL of uploaded file
+ */
+async function uploadToSupabase(buffer, fileName) {
+  try {
+    const { data, error } = await supabase.storage
+      .from(BUCKET_NAME)
+      .upload(`uploads/${fileName}`, buffer, {
+        contentType: 'image/jpeg',
+        upsert: true
+      });
+    
+    if (error) throw error;
+    
+    // Get public URL
+    const { data: urlData } = supabase.storage
+      .from(BUCKET_NAME)
+      .getPublicUrl(`uploads/${fileName}`);
+      
+    return urlData.publicUrl;
+  } catch (error) {
+    console.error('Error uploading to Supabase:', error);
+    throw new Error(`Failed to upload image: ${error.message}`);
+  }
 }
 
 /**
@@ -24,6 +52,13 @@ async function processImage(imagePath) {
   try {
     // Get image metadata
     const metadata = await sharp(imagePath).metadata();
+    const imageBuffer = fs.readFileSync(imagePath);
+    
+    // Generate a unique filename
+    const originalFileName = `${uuidv4()}${path.extname(imagePath)}`;
+    
+    // Upload to Supabase
+    const originalUrl = await uploadToSupabase(imageBuffer, originalFileName);
     
     // Analyze image using OpenAI Vision
     const imageObjects = await detectObjectsInImage(imagePath);
@@ -32,7 +67,8 @@ async function processImage(imagePath) {
     if (!imageObjects || imageObjects.length <= 1) {
       return [{
         originalPath: imagePath,
-        processedPath: imagePath,
+        processedPath: originalUrl,
+        publicUrl: originalUrl,
         coordinates: null,
         metadata: {
           width: metadata.width,
@@ -49,15 +85,23 @@ async function processImage(imagePath) {
         
         // Create a cropped version of the image
         const croppedImageName = `${path.basename(imagePath, path.extname(imagePath))}_${label}_${uuidv4()}${path.extname(imagePath)}`;
-        const croppedImagePath = path.join(UPLOAD_DIR, croppedImageName);
+        const tempCroppedPath = path.join(TMP_DIR, croppedImageName);
         
         await sharp(imagePath)
           .extract({ left: x, top: y, width, height })
-          .toFile(croppedImagePath);
+          .toFile(tempCroppedPath);
+        
+        // Upload cropped image to Supabase
+        const croppedBuffer = fs.readFileSync(tempCroppedPath);
+        const croppedUrl = await uploadToSupabase(croppedBuffer, croppedImageName);
+        
+        // Remove temporary file
+        fs.unlinkSync(tempCroppedPath);
         
         return {
           originalPath: imagePath,
-          processedPath: croppedImagePath,
+          processedPath: tempCroppedPath,
+          publicUrl: croppedUrl,
           coordinates: { x, y, width, height },
           metadata: {
             label,
@@ -191,19 +235,26 @@ async function generateListingDetails(imagePath) {
 /**
  * Compress and optimize images for storage
  * @param {string} imagePath - Path to the original image
- * @returns {Promise<string>} - Path to the optimized image
+ * @returns {Promise<string>} - Public URL of the optimized image
  */
 async function optimizeImage(imagePath) {
   try {
     const optimizedImageName = `optimized_${path.basename(imagePath)}`;
-    const optimizedImagePath = path.join(UPLOAD_DIR, optimizedImageName);
+    const tempOptimizedPath = path.join(TMP_DIR, optimizedImageName);
     
     await sharp(imagePath)
       .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
       .jpeg({ quality: 80 })
-      .toFile(optimizedImagePath);
+      .toFile(tempOptimizedPath);
     
-    return optimizedImagePath;
+    // Upload optimized image to Supabase
+    const optimizedBuffer = fs.readFileSync(tempOptimizedPath);
+    const optimizedUrl = await uploadToSupabase(optimizedBuffer, optimizedImageName);
+    
+    // Remove temporary file
+    fs.unlinkSync(tempOptimizedPath);
+    
+    return optimizedUrl;
   } catch (error) {
     console.error('Error optimizing image:', error);
     // Return original path on error
