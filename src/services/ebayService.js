@@ -40,8 +40,9 @@ async function createEbayListing(listing, imageUrls) {
         ConditionID: 1000, // New
         Country: 'US',
         Currency: 'USD',
+        Location: 'United States', // Add required Location field
         DispatchTimeMax: 3, // 3 days handling time
-        ListingDuration: 'Days_30',
+        ListingDuration: 'Days_30', // Correct way to specify duration
         ListingType: 'FixedPriceItem',
         PaymentMethods: ['PayPal'],
         PayPalEmailAddress: 'seller@example.com',
@@ -67,7 +68,6 @@ async function createEbayListing(listing, imageUrls) {
           }
         },
         Site: 'US',
-        Duration: 'Days_30', // Ensure Duration is properly set
         Country: 'US', // Ensure Country is at the correct level
         Currency: 'USD' // Ensure Currency is at the correct level
       }
