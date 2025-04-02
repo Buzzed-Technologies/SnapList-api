@@ -1,6 +1,6 @@
 const axios = require('axios');
 const ebayConfig = require('../config/ebay');
-const supabase = require('../config/supabase');
+const { supabase } = require('../config/supabase');
 
 /**
  * Create a new listing on eBay

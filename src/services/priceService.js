@@ -1,4 +1,4 @@
-const supabase = require('../config/supabase');
+const { supabase } = require('../config/supabase');
 const ebayService = require('./ebayService');
 const facebookService = require('./facebookService');
 const notificationService = require('./notificationService');

@@ -1,6 +1,6 @@
 const axios = require('axios');
 const facebookConfig = require('../config/facebook');
-const supabase = require('../config/supabase');
+const { supabase } = require('../config/supabase');
 
 /**
  * Create a new listing on Facebook Marketplace

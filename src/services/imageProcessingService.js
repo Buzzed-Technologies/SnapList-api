@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const openai = require('../config/openai');
-const supabase = require('../config/supabase');
+const { supabase } = require('../config/supabase');
 const os = require('os');
 
 const BUCKET_NAME = 'snaplist-images';

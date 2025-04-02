@@ -1,5 +1,5 @@
 const express = require('express');
-const supabase = require('../config/supabase');
+const { supabase } = require('../config/supabase');
 const ebayService = require('../services/ebayService');
 const facebookService = require('../services/facebookService');
 const priceService = require('../services/priceService');
