@@ -17,7 +17,7 @@
   <div class="container">
     <header>
       <div class="logo">
-        <img src="/static/img/logo.png" alt="SnapList Logo">
+        <img src="/static/img/logo.svg" alt="SnapList Logo" onerror="this.onerror=null; this.src='/static/img/logo.png'">
         <h1>SnapList</h1>
       </div>
     </header>
@@ -64,6 +64,21 @@
             </div>
           </div>
 
+          <!-- Marketplace links -->
+          <div class="marketplace-links">
+            <h3>Available on</h3>
+            <div class="links-container">
+              <a id="ebay-link" href="#" target="_blank" class="marketplace-button ebay-button" style="display: none;">
+                <span class="marketplace-icon">🛍️</span>
+                View on eBay
+              </a>
+              <a id="facebook-link" href="#" target="_blank" class="marketplace-button facebook-button" style="display: none;">
+                <span class="marketplace-icon">👥</span>
+                View on Facebook Marketplace
+              </a>
+            </div>
+          </div>
+
           <!-- Item details -->
           <div class="details-section">
             <h3>Item Details</h3>
@@ -103,21 +118,6 @@
           <div class="description-section">
             <h3>Description</h3>
             <p id="listing-description"></p>
-          </div>
-
-          <!-- Marketplace links -->
-          <div class="marketplace-links">
-            <h3>Available on</h3>
-            <div class="links-container">
-              <a id="ebay-link" href="#" target="_blank" class="marketplace-button ebay-button" style="display: none;">
-                <span class="marketplace-icon">🛍️</span>
-                View on eBay
-              </a>
-              <a id="facebook-link" href="#" target="_blank" class="marketplace-button facebook-button" style="display: none;">
-                <span class="marketplace-icon">👥</span>
-                View on Facebook Marketplace
-              </a>
-            </div>
           </div>
         </div>
       </div>

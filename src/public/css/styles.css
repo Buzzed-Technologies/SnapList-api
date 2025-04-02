@@ -1,13 +1,13 @@
 :root {
   --primary-color: #FF6D14;
-  --primary-light: #FFF0EA;
+  --primary-light: #FFEADC;
   --background-color: #F9F9F9;
   --card-background: #FFFFFF;
   --text-primary: #333333;
   --text-secondary: #777777;
   --border-color: #ECECEC;
   --shadow-color: rgba(0, 0, 0, 0.05);
-  --status-active: #FF9800;
+  --status-active: #FF6D14;
   --status-sold: #4CAF50;
   --status-ended: #F44336;
 }
