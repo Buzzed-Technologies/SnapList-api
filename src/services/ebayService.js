@@ -28,11 +28,23 @@ async function createEbayListing(listing, imageUrls) {
       ? 'https://api.sandbox.ebay.com/ws/api.dll'
       : 'https://api.ebay.com/ws/api.dll';
     
+    // Sanitize description to handle HTML content safely
+    const sanitizeDescription = (desc) => {
+      if (!desc) return '';
+      
+      // For simplicity, we'll wrap the description in CDATA if it contains HTML
+      if (desc.includes('<') || desc.includes('&')) {
+        return `<![CDATA[${desc}]]>`;
+      }
+      
+      return desc;
+    };
+    
     // Prepare the listing data
     const ebayListing = {
       Item: {
         Title: listing.title,
-        Description: listing.description,
+        Description: sanitizeDescription(listing.description),
         PrimaryCategory: {
           CategoryID: '185116' // Use a valid leaf category (Men's T-Shirts)
         },
@@ -300,6 +312,17 @@ async function checkEbayListingSold(ebayItemId) {
  * @returns {string} - The XML string
  */
 function generateEbayXml(data) {
+  // Function to escape XML special characters
+  const escapeXml = (unsafe) => {
+    if (typeof unsafe !== 'string') return unsafe;
+    return unsafe
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&apos;');
+  };
+
   // This is a simplified version; in a real implementation you would use a proper XML builder
   const generateXmlFromObject = (obj) => {
     let xml = '';
@@ -311,12 +334,12 @@ function generateEbayXml(data) {
           if (typeof item === 'object') {
             return `<${key}>${generateXmlFromObject(item)}</${key}>`;
           }
-          return `<${key}>${item}</${key}>`;
+          return `<${key}>${escapeXml(item)}</${key}>`;
         }).join('');
       } else if (typeof value === 'object') {
         xml += `<${key}>${generateXmlFromObject(value)}</${key}>`;
       } else {
-        xml += `<${key}>${value}</${key}>`;
+        xml += `<${key}>${escapeXml(value)}</${key}>`;
       }
     }
     return xml;
