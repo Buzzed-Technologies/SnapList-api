@@ -16,6 +16,18 @@
       "dest": "src/public/$1"
     },
     {
+      "src": "/admin/login.html",
+      "dest": "src/index.js"
+    },
+    {
+      "src": "/admin/dashboard.html",
+      "dest": "src/index.js"
+    },
+    {
+      "src": "/admin",
+      "dest": "src/index.js"
+    },
+    {
       "src": "/terms",
       "dest": "src/index.js"
     },
