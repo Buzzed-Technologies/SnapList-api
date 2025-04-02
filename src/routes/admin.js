@@ -2,6 +2,21 @@ const express = require('express');
 const { supabase } = require('../config/supabase');
 const router = express.Router();
 const { getUserById } = require('../utils/user');
+const axios = require('axios');
+
+// eBay API Configuration
+const EBAY_CONFIG = {
+  appId: process.env.EBAY_APP_ID || 'Buzz...',
+  certId: process.env.EBAY_CERT_ID || 'SBX-...',
+  devId: process.env.EBAY_DEV_ID || 'fef1...',
+  authToken: process.env.EBAY_AUTH_TOKEN || 'v^1....',
+  sandboxMode: process.env.EBAY_SANDBOX_MODE === 'true' || true
+};
+
+// eBay API base URL based on sandbox mode
+const EBAY_API_URL = EBAY_CONFIG.sandboxMode 
+  ? 'https://api.sandbox.ebay.com'
+  : 'https://api.ebay.com';
 
 /**
  * @api {get} /api/admin/stats Get dashboard statistics
@@ -16,21 +31,22 @@ router.get('/stats', async (req, res) => {
     // Total revenue calculation
     const { data: salesData, error: salesError } = await supabase
       .from('sales')
-      .select('price');
+      .select('price, fee, net_amount');
     
     if (salesError) throw salesError;
     
-    const totalRevenue = salesData.reduce((sum, sale) => sum + sale.price, 0);
+    const totalRevenue = salesData.reduce((sum, sale) => sum + parseFloat(sale.price || 0), 0);
+    const totalProfit = salesData.reduce((sum, sale) => sum + parseFloat(sale.fee || 0), 0);
     
     // Active users count
-    const { count: activeUsers, error: usersError } = await supabase
+    const { count: userCount, error: usersError } = await supabase
       .from('users')
       .select('*', { count: 'exact', head: true });
     
     if (usersError) throw usersError;
     
     // Active listings count
-    const { count: activeListings, error: listingsError } = await supabase
+    const { count: activeListingCount, error: listingsError } = await supabase
       .from('listings')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'active');
@@ -38,99 +54,22 @@ router.get('/stats', async (req, res) => {
     if (listingsError) throw listingsError;
     
     // Completed sales count
-    const { count: completedSales, error: completedSalesError } = await supabase
-      .from('sales')
-      .select('*', { count: 'exact', head: true });
+    const { count: soldCount, error: completedSalesError } = await supabase
+      .from('listings')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'sold');
     
     if (completedSalesError) throw completedSalesError;
-    
-    // Recent 5 sales
-    const { data: recentSales, error: recentSalesError } = await supabase
-      .from('sales')
-      .select(`
-        id,
-        listing_id,
-        price,
-        created_at,
-        listings(title, user_id),
-        users!sales_user_id_fkey(name)
-      `)
-      .order('created_at', { ascending: false })
-      .limit(5);
-    
-    if (recentSalesError) throw recentSalesError;
-    
-    // Format recent sales for frontend
-    const formattedRecentSales = recentSales.map(sale => ({
-      id: sale.id,
-      title: sale.listings?.title || 'Unknown Item',
-      price: sale.price,
-      created_at: sale.created_at,
-      seller_name: sale.users?.name || 'Unknown Seller'
-    }));
-    
-    // Pending payouts
-    const { data: pendingPayouts, error: pendingPayoutsError } = await supabase
-      .from('payouts')
-      .select(`
-        id,
-        user_id,
-        amount,
-        created_at,
-        users(name)
-      `)
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false })
-      .limit(5);
-    
-    if (pendingPayoutsError) throw pendingPayoutsError;
-    
-    // Format pending payouts for frontend
-    const formattedPendingPayouts = pendingPayouts.map(payout => ({
-      id: payout.id,
-      amount: payout.amount,
-      created_at: payout.created_at,
-      user_id: payout.user_id,
-      user_name: payout.users?.name || 'Unknown User'
-    }));
-    
-    // Recent support chats
-    const { data: supportChats, error: supportChatsError } = await supabase
-      .from('support_chats')
-      .select(`
-        id,
-        user_id,
-        message,
-        created_at,
-        status,
-        users(name)
-      `)
-      .order('created_at', { ascending: false })
-      .limit(5);
-    
-    if (supportChatsError) throw supportChatsError;
-    
-    // Format support chats for frontend
-    const formattedSupportChats = supportChats.map(chat => ({
-      id: chat.id,
-      message: chat.message,
-      created_at: chat.created_at,
-      status: chat.status,
-      user_id: chat.user_id,
-      user_name: chat.users?.name || 'Anonymous'
-    }));
     
     res.json({
       success: true,
       stats: {
         totalRevenue,
-        activeUsers,
-        activeListings,
-        completedSales
-      },
-      recentSales: formattedRecentSales,
-      pendingPayouts: formattedPendingPayouts,
-      supportChats: formattedSupportChats
+        totalProfit,
+        userCount,
+        activeListingCount,
+        soldCount
+      }
     });
   } catch (error) {
     console.error('Error fetching admin stats:', error);
@@ -411,7 +350,6 @@ router.put('/listings/:id/status', async (req, res) => {
  * 
  * @apiParam {Number} [page=1] Page number
  * @apiParam {Number} [limit=10] Number of payouts per page
- * @apiParam {String} [search] Search term to filter payouts by user name
  * @apiParam {String} [status] Filter by payout status
  * @apiParam {String} [sort_by=created_at] Field to sort by
  * @apiParam {String} [sort_dir=desc] Sort direction (asc or desc)
@@ -424,7 +362,6 @@ router.get('/payouts', async (req, res) => {
     const { 
       page = 1, 
       limit = 10, 
-      search = '', 
       status = '',
       sort_by = 'created_at', 
       sort_dir = 'desc' 
@@ -438,14 +375,8 @@ router.get('/payouts', async (req, res) => {
       .from('payouts')
       .select(`
         *,
-        users(name),
-        payout_items(id)
+        users(name)
       `, { count: 'exact' });
-    
-    // Add search filter by user name
-    if (search) {
-      query = query.or(`users.name.ilike.%${search}%`);
-    }
     
     // Add status filter if provided
     if (status && status !== 'all') {
@@ -469,7 +400,6 @@ router.get('/payouts', async (req, res) => {
       user_id: payout.user_id,
       user_name: payout.users?.name || 'Unknown',
       amount: payout.amount,
-      items_count: payout.payout_items ? payout.payout_items.length : 0,
       status: payout.status,
       payment_method: payout.payment_method,
       payment_id: payout.payment_id,
@@ -492,111 +422,7 @@ router.get('/payouts', async (req, res) => {
 });
 
 /**
- * @api {get} /api/admin/payouts/stats Get payout statistics
- * @apiDescription Get statistics about payouts
- * @apiName GetPayoutStats
- * @apiGroup Admin
- * 
- * @apiSuccess {Object} stats Payout statistics
- */
-router.get('/payouts/stats', async (req, res) => {
-  try {
-    // Get pending payouts
-    const { data: pendingPayouts, error: pendingError } = await supabase
-      .from('payouts')
-      .select('amount')
-      .eq('status', 'pending');
-    
-    if (pendingError) throw pendingError;
-    
-    const pendingAmount = pendingPayouts.reduce((sum, payout) => sum + payout.amount, 0);
-    const pendingCount = pendingPayouts.length;
-    
-    // Get payouts processed this month
-    const startOfMonth = new Date();
-    startOfMonth.setDate(1);
-    startOfMonth.setHours(0, 0, 0, 0);
-    
-    const { data: monthlyPayouts, error: monthlyError } = await supabase
-      .from('payouts')
-      .select('amount')
-      .eq('status', 'paid')
-      .gte('updated_at', startOfMonth.toISOString());
-    
-    if (monthlyError) throw monthlyError;
-    
-    const monthlyAmount = monthlyPayouts.reduce((sum, payout) => sum + payout.amount, 0);
-    const monthlyCount = monthlyPayouts.length;
-    
-    // Get average processing time (in days)
-    const { data: processedPayouts, error: processedError } = await supabase
-      .from('payouts')
-      .select('created_at, updated_at')
-      .eq('status', 'paid');
-    
-    if (processedError) throw processedError;
-    
-    let avgProcessingDays = 0;
-    if (processedPayouts.length > 0) {
-      const totalDays = processedPayouts.reduce((sum, payout) => {
-        const created = new Date(payout.created_at);
-        const updated = new Date(payout.updated_at);
-        const diffTime = Math.abs(updated - created);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        return sum + diffDays;
-      }, 0);
-      avgProcessingDays = totalDays / processedPayouts.length;
-    }
-    
-    // Calculate processing time change from previous month
-    const previousMonth = new Date(startOfMonth);
-    previousMonth.setMonth(previousMonth.getMonth() - 1);
-    
-    const { data: previousMonthPayouts, error: prevMonthError } = await supabase
-      .from('payouts')
-      .select('created_at, updated_at')
-      .eq('status', 'paid')
-      .gte('updated_at', previousMonth.toISOString())
-      .lt('updated_at', startOfMonth.toISOString());
-    
-    if (prevMonthError) throw prevMonthError;
-    
-    let prevAvgProcessingDays = 0;
-    if (previousMonthPayouts.length > 0) {
-      const totalDays = previousMonthPayouts.reduce((sum, payout) => {
-        const created = new Date(payout.created_at);
-        const updated = new Date(payout.updated_at);
-        const diffTime = Math.abs(updated - created);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        return sum + diffDays;
-      }, 0);
-      prevAvgProcessingDays = totalDays / previousMonthPayouts.length;
-    }
-    
-    const processingDaysChange = prevAvgProcessingDays > 0 
-      ? avgProcessingDays - prevAvgProcessingDays 
-      : 0;
-    
-    res.json({
-      success: true,
-      pendingAmount,
-      pendingCount,
-      monthlyAmount,
-      monthlyCount,
-      avgProcessingDays,
-      processingDaysChange
-    });
-  } catch (error) {
-    console.error('Error fetching payout stats:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch payout statistics'
-    });
-  }
-});
-
-/**
- * @api {post} /api/admin/payouts/:id/process Process a payout
+ * @api {post} /api/admin/process-payout/:id Process a payout
  * @apiDescription Mark a payout as processed
  * @apiName ProcessPayout
  * @apiGroup Admin
@@ -605,16 +431,16 @@ router.get('/payouts/stats', async (req, res) => {
  * 
  * @apiSuccess {Boolean} success Indicates if the operation was successful
  */
-router.post('/payouts/:id/process', async (req, res) => {
+router.post('/process-payout/:id', async (req, res) => {
   try {
     const { id } = req.params;
     
     // Update payout status
-    const { data, error } = await supabase
+    const { data: payout, error } = await supabase
       .from('payouts')
       .update({ 
         status: 'paid',
-        updated_at: new Date()
+        updated_at: new Date().toISOString()
       })
       .eq('id', id)
       .select()
@@ -625,7 +451,7 @@ router.post('/payouts/:id/process', async (req, res) => {
     res.json({
       success: true,
       message: 'Payout processed successfully',
-      payout: data
+      payout
     });
   } catch (error) {
     console.error('Error processing payout:', error);
@@ -637,58 +463,32 @@ router.post('/payouts/:id/process', async (req, res) => {
 });
 
 /**
- * @api {post} /api/admin/payouts/process-all Process all pending payouts
- * @apiDescription Mark all pending payouts as processed
- * @apiName ProcessAllPayouts
- * @apiGroup Admin
- * 
- * @apiSuccess {Boolean} success Indicates if the operation was successful
- * @apiSuccess {Number} processed_count Number of payouts processed
- */
-router.post('/payouts/process-all', async (req, res) => {
-  try {
-    // Update all pending payouts to paid
-    const { data, error } = await supabase
-      .from('payouts')
-      .update({ 
-        status: 'paid',
-        updated_at: new Date()
-      })
-      .eq('status', 'pending')
-      .select();
-    
-    if (error) throw error;
-    
-    const processedCount = data ? data.length : 0;
-    
-    res.json({
-      success: true,
-      message: 'All pending payouts processed successfully',
-      processed_count: processedCount
-    });
-  } catch (error) {
-    console.error('Error processing all payouts:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to process payouts'
-    });
-  }
-});
-
-/**
  * @api {get} /api/admin/support-chats Get all support chats
- * @apiDescription Get all support chats, optionally filtered
+ * @apiDescription Get a paginated list of all support chats
  * @apiName GetSupportChats
  * @apiGroup Admin
  * 
- * @apiParam {String} [search] Search term to filter chats by message content or user name
+ * @apiParam {Number} [page=1] Page number
+ * @apiParam {Number} [limit=10] Number of chats per page
  * @apiParam {String} [status] Filter by chat status
+ * @apiParam {String} [sort_by=created_at] Field to sort by
+ * @apiParam {String} [sort_dir=desc] Sort direction (asc or desc)
  * 
  * @apiSuccess {Object[]} chats Array of support chats
+ * @apiSuccess {Number} count Total count of chats
  */
 router.get('/support-chats', async (req, res) => {
   try {
-    const { search = '', status = '' } = req.query;
+    const { 
+      page = 1, 
+      limit = 10, 
+      status = '',
+      sort_by = 'created_at', 
+      sort_dir = 'desc' 
+    } = req.query;
+    
+    // Calculate offset for pagination
+    const offset = (page - 1) * limit;
     
     // Start building query
     let query = supabase
@@ -696,42 +496,28 @@ router.get('/support-chats', async (req, res) => {
       .select(`
         *,
         users(name)
-      `);
-    
-    // Add search filter if provided
-    if (search) {
-      query = query.or(`message.ilike.%${search}%,users.name.ilike.%${search}%`);
-    }
+      `, { count: 'exact' });
     
     // Add status filter if provided
     if (status && status !== 'all') {
       query = query.eq('status', status);
     }
     
-    // Sort by most recent first
-    query = query.order('created_at', { ascending: false });
+    // Add sorting
+    query = query.order(sort_by, { ascending: sort_dir === 'asc' });
+    
+    // Add pagination
+    query = query.range(offset, offset + limit - 1);
     
     // Execute query
-    const { data: chats, error } = await query;
+    const { data: chats, count, error } = await query;
     
     if (error) throw error;
     
-    // Format chat data for frontend
-    const formattedChats = chats.map(chat => ({
-      id: chat.id,
-      user_id: chat.user_id,
-      user_name: chat.users?.name || 'Anonymous',
-      message: chat.message,
-      ai_response: chat.ai_response,
-      admin_response: chat.admin_response,
-      status: chat.status,
-      created_at: chat.created_at,
-      updated_at: chat.updated_at
-    }));
-    
     res.json({
       success: true,
-      chats: formattedChats
+      chats,
+      count
     });
   } catch (error) {
     console.error('Error fetching support chats:', error);
@@ -743,85 +529,81 @@ router.get('/support-chats', async (req, res) => {
 });
 
 /**
- * @api {post} /api/admin/support-chats/:id/reply Reply to a support chat
- * @apiDescription Add an admin reply to a support chat
- * @apiName ReplySupportChat
+ * @api {get} /api/admin/support-chats/:id Get a support chat
+ * @apiDescription Get a specific support chat by ID
+ * @apiName GetSupportChat
  * @apiGroup Admin
  * 
- * @apiParam {String} id Chat ID
- * @apiParam {String} message Admin reply message
+ * @apiParam {String} id Support chat ID
  * 
- * @apiSuccess {Boolean} success Indicates if the operation was successful
+ * @apiSuccess {Object} chat Support chat details
  */
-router.post('/support-chats/:id/reply', async (req, res) => {
+router.get('/support-chats/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { message } = req.body;
     
-    if (!message) {
-      return res.status(400).json({
-        success: false,
-        message: 'Reply message is required'
-      });
-    }
-    
-    // Update chat with admin response and change status to responded
-    const { data, error } = await supabase
+    // Get chat
+    const { data: chat, error } = await supabase
       .from('support_chats')
-      .update({ 
-        admin_response: message,
-        status: 'responded',
-        updated_at: new Date()
-      })
+      .select(`
+        *,
+        users(name, phone)
+      `)
       .eq('id', id)
-      .select()
       .single();
     
     if (error) throw error;
     
+    if (!chat) {
+      return res.status(404).json({
+        success: false,
+        message: 'Support chat not found'
+      });
+    }
+    
     res.json({
       success: true,
-      message: 'Reply sent successfully',
-      chat: data
+      chat
     });
   } catch (error) {
-    console.error('Error replying to support chat:', error);
+    console.error('Error fetching support chat:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to send reply'
+      message: 'Failed to fetch support chat'
     });
   }
 });
 
 /**
- * @api {put} /api/admin/support-chats/:id/status Update support chat status
- * @apiDescription Update the status of a support chat
- * @apiName UpdateSupportChatStatus
+ * @api {post} /api/admin/support-chats/:id/respond Respond to a support chat
+ * @apiDescription Admin response to a support chat
+ * @apiName RespondToSupportChat
  * @apiGroup Admin
  * 
- * @apiParam {String} id Chat ID
- * @apiParam {String} status New status
+ * @apiParam {String} id Support chat ID
+ * @apiParam {String} response Admin response message
  * 
  * @apiSuccess {Boolean} success Indicates if the operation was successful
  */
-router.put('/support-chats/:id/status', async (req, res) => {
+router.post('/support-chats/:id/respond', async (req, res) => {
   try {
     const { id } = req.params;
-    const { status } = req.body;
+    const { response } = req.body;
     
-    if (!status) {
+    if (!response) {
       return res.status(400).json({
         success: false,
-        message: 'Status is required'
+        message: 'Response message is required'
       });
     }
     
-    // Update chat status
-    const { data, error } = await supabase
+    // Update chat with admin response
+    const { data: chat, error } = await supabase
       .from('support_chats')
       .update({ 
-        status,
-        updated_at: new Date()
+        admin_response: response,
+        status: 'responded',
+        updated_at: new Date().toISOString()
       })
       .eq('id', id)
       .select()
@@ -831,16 +613,17 @@ router.put('/support-chats/:id/status', async (req, res) => {
     
     res.json({
       success: true,
-      message: 'Support chat status updated successfully',
-      chat: data
+      message: 'Response sent successfully',
+      chat
     });
   } catch (error) {
-    console.error('Error updating support chat status:', error);
+    console.error('Error responding to support chat:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to update status'
+      message: 'Failed to send response'
     });
   }
 });
 
+// Export the router module
 module.exports = router; 
