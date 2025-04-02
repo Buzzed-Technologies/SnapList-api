@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SnapList Shared Listing</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <meta property="og:title" content="SnapList Shared Listing">
+  <meta property="og:description" content="Check out this listing on SnapList">
+  <meta property="og:image" id="og-image" content="">
+  <meta property="og:url" content="">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">
+        <img src="/static/img/logo.png" alt="SnapList Logo">
+        <h1>SnapList</h1>
+      </div>
+    </header>
+
+    <main>
+      <div id="loading" class="loading">
+        <div class="spinner"></div>
+        <p>Loading listing...</p>
+      </div>
+
+      <div id="listing-container" class="listing-container" style="display: none;">
+        <!-- Image carousel -->
+        <div class="image-carousel">
+          <div id="carousel-images" class="carousel-images"></div>
+          <div id="carousel-dots" class="carousel-dots"></div>
+        </div>
+
+        <!-- Listing details -->
+        <div class="listing-details">
+          <div class="listing-header">
+            <h2 id="listing-title"></h2>
+            <div class="price-status">
+              <span id="listing-status" class="status-pill"></span>
+              <span id="listing-price" class="price"></span>
+            </div>
+          </div>
+
+          <!-- Quick stats -->
+          <div class="stats-row">
+            <div class="stat-item">
+              <span class="stat-icon">📅</span>
+              <span class="stat-label">Listed</span>
+              <span id="listing-date" class="stat-value"></span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-icon">🏷️</span>
+              <span class="stat-label">Condition</span>
+              <span id="listing-condition" class="stat-value"></span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-icon">💰</span>
+              <span class="stat-label">Original</span>
+              <span id="listing-original-price" class="stat-value"></span>
+            </div>
+          </div>
+
+          <!-- Item details -->
+          <div class="details-section">
+            <h3>Item Details</h3>
+            <div class="details-grid">
+              <div class="detail-card">
+                <div class="detail-icon">🎨</div>
+                <div class="detail-content">
+                  <span class="detail-label">Color</span>
+                  <span id="detail-color" class="detail-value">-</span>
+                </div>
+              </div>
+              <div class="detail-card">
+                <div class="detail-icon">👕</div>
+                <div class="detail-content">
+                  <span class="detail-label">Brand</span>
+                  <span id="detail-brand" class="detail-value">-</span>
+                </div>
+              </div>
+              <div class="detail-card">
+                <div class="detail-icon">📏</div>
+                <div class="detail-content">
+                  <span class="detail-label">Size</span>
+                  <span id="detail-size" class="detail-value">-</span>
+                </div>
+              </div>
+              <div class="detail-card">
+                <div class="detail-icon">📂</div>
+                <div class="detail-content">
+                  <span class="detail-label">Category</span>
+                  <span id="detail-category" class="detail-value">-</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Description -->
+          <div class="description-section">
+            <h3>Description</h3>
+            <p id="listing-description"></p>
+          </div>
+
+          <!-- Marketplace links -->
+          <div class="marketplace-links">
+            <h3>Available on</h3>
+            <div class="links-container">
+              <a id="ebay-link" href="#" target="_blank" class="marketplace-button ebay-button" style="display: none;">
+                <span class="marketplace-icon">🛍️</span>
+                View on eBay
+              </a>
+              <a id="facebook-link" href="#" target="_blank" class="marketplace-button facebook-button" style="display: none;">
+                <span class="marketplace-icon">👥</span>
+                View on Facebook Marketplace
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="error-message" class="error-message" style="display: none;">
+        <p>Sorry, we couldn't find this listing.</p>
+      </div>
+    </main>
+
+    <footer>
+      <p>Powered by SnapList &copy; 2023</p>
+    </footer>
+  </div>
+
+  <script src="/static/js/listing.js"></script>
+</body>
+</html> 

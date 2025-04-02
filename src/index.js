@@ -12,6 +12,7 @@ const listingsRoutes = require('./routes/listings');
 const profitsRoutes = require('./routes/profits');
 const imagesRoutes = require('./routes/images');
 const payoutsRoutes = require('./routes/payouts');
+const shareRoutes = require('./routes/share');
 
 // Import price reduction service
 const { schedulePriceReductions } = require('./services/priceService');
@@ -30,12 +31,16 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Serve static files for shared listings
+app.use('/static', express.static(path.join(__dirname, 'public')));
+
 // Routes
 app.use('/api/users', usersRoutes);
 app.use('/api/listings', listingsRoutes);
 app.use('/api/profits', profitsRoutes);
 app.use('/api/images', imagesRoutes);
 app.use('/api/payouts', payoutsRoutes);
+app.use('/share', shareRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {
