@@ -702,9 +702,239 @@
     }
     
     // Edit User
-    function editUser(userId) {
-      alert('Edit user: ' + userId);
-      // In a real implementation, this would open an edit modal or page
+    async function editUser(userId) {
+      try {
+        const response = await fetch(`/api/admin/users/${userId}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch user details');
+        }
+        
+        const data = await response.json();
+        if (!data.success) {
+          throw new Error(data.message || 'Failed to fetch user details');
+        }
+        
+        const user = data.user;
+        
+        // Create modal content for editing
+        const modalHTML = `
+          <div class="modal-header">
+            <h2>Edit User</h2>
+            <button id="closeEditModal" class="close-button">&times;</button>
+          </div>
+          <div class="modal-body">
+            <form id="editUserForm">
+              <div class="form-group">
+                <label for="name">Name</label>
+                <input type="text" id="name" name="name" value="${user.name || ''}" required>
+              </div>
+              <div class="form-group">
+                <label for="phone">Phone Number</label>
+                <input type="tel" id="phone" name="phone" value="${user.phone || ''}">
+              </div>
+              <div class="form-group">
+                <label for="zelle_id">Zelle ID</label>
+                <input type="text" id="zelle_id" name="zelle_id" value="${user.zelle_id || ''}">
+              </div>
+              <div class="form-group">
+                <label for="paypal_id">PayPal ID</label>
+                <input type="text" id="paypal_id" name="paypal_id" value="${user.paypal_id || ''}">
+              </div>
+              <div class="form-group">
+                <label for="venmo_id">Venmo ID</label>
+                <input type="text" id="venmo_id" name="venmo_id" value="${user.venmo_id || ''}">
+              </div>
+              <div class="form-group">
+                <label for="cashapp_id">Cash App ID</label>
+                <input type="text" id="cashapp_id" name="cashapp_id" value="${user.cashapp_id || ''}">
+              </div>
+              <div class="form-actions">
+                <button type="submit" class="primary-button">Save Changes</button>
+                <button type="button" id="cancelEdit" class="secondary-button">Cancel</button>
+              </div>
+            </form>
+          </div>
+        `;
+        
+        // Create and display modal
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.innerHTML = `<div class="modal-content">${modalHTML}</div>`;
+        document.body.appendChild(modal);
+        
+        // Add styles for the modal if they don't exist
+        if (!document.getElementById('modalStyles')) {
+          const modalStyles = document.createElement('style');
+          modalStyles.id = 'modalStyles';
+          modalStyles.textContent = `
+            .modal {
+              display: flex;
+              position: fixed;
+              top: 0;
+              left: 0;
+              right: 0;
+              bottom: 0;
+              background-color: rgba(0, 0, 0, 0.5);
+              z-index: 1000;
+              opacity: 0;
+              pointer-events: none;
+              transition: opacity 0.3s ease;
+              justify-content: center;
+              align-items: center;
+            }
+            
+            .modal.show {
+              opacity: 1;
+              pointer-events: auto;
+            }
+            
+            .modal-content {
+              background-color: var(--card-background);
+              border-radius: 12px;
+              width: 90%;
+              max-width: 500px;
+              box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            }
+            
+            .modal-header {
+              padding: 16px 20px;
+              border-bottom: 1px solid var(--border-color);
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+            }
+            
+            .modal-header h2 {
+              font-size: 18px;
+              font-weight: 600;
+            }
+            
+            .close-button {
+              background: none;
+              border: none;
+              font-size: 24px;
+              cursor: pointer;
+              color: var(--text-secondary);
+            }
+            
+            .modal-body {
+              padding: 20px;
+            }
+            
+            .form-group {
+              margin-bottom: 16px;
+            }
+            
+            .form-group label {
+              display: block;
+              margin-bottom: 6px;
+              font-size: 14px;
+              font-weight: 500;
+            }
+            
+            .form-group input,
+            .form-group textarea,
+            .form-group select {
+              width: 100%;
+              padding: 10px 12px;
+              background-color: var(--background-color);
+              border: 1px solid var(--border-color);
+              border-radius: 6px;
+              font-size: 14px;
+              color: var(--text-primary);
+            }
+            
+            .form-actions {
+              display: flex;
+              justify-content: flex-end;
+              gap: 12px;
+              margin-top: 20px;
+            }
+            
+            .primary-button {
+              background-color: var(--primary-color);
+              color: white;
+              border: none;
+              padding: 10px 16px;
+              border-radius: 6px;
+              font-weight: 500;
+              cursor: pointer;
+            }
+            
+            .secondary-button {
+              background-color: var(--background-color);
+              color: var(--text-primary);
+              border: 1px solid var(--border-color);
+              padding: 10px 16px;
+              border-radius: 6px;
+              font-weight: 500;
+              cursor: pointer;
+            }
+          `;
+          document.head.appendChild(modalStyles);
+        }
+        
+        // Show the modal
+        setTimeout(() => {
+          modal.classList.add('show');
+        }, 10);
+        
+        // Close modal handlers
+        document.getElementById('closeEditModal').addEventListener('click', () => {
+          modal.classList.remove('show');
+          setTimeout(() => modal.remove(), 300);
+        });
+        
+        document.getElementById('cancelEdit').addEventListener('click', () => {
+          modal.classList.remove('show');
+          setTimeout(() => modal.remove(), 300);
+        });
+        
+        // Form submission
+        document.getElementById('editUserForm').addEventListener('submit', async (e) => {
+          e.preventDefault();
+          
+          try {
+            const formData = {
+              name: document.getElementById('name').value,
+              phone: document.getElementById('phone').value,
+              zelle_id: document.getElementById('zelle_id').value,
+              paypal_id: document.getElementById('paypal_id').value,
+              venmo_id: document.getElementById('venmo_id').value,
+              cashapp_id: document.getElementById('cashapp_id').value
+            };
+            
+            const updateResponse = await fetch(`/api/admin/users/${userId}`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(formData)
+            });
+            
+            if (!updateResponse.ok) {
+              throw new Error('Failed to update user');
+            }
+            
+            const updateData = await updateResponse.json();
+            
+            if (updateData.success) {
+              alert('User updated successfully');
+              modal.classList.remove('show');
+              setTimeout(() => modal.remove(), 300);
+              fetchUsers(); // Refresh the users list
+            } else {
+              throw new Error(updateData.message || 'Failed to update user');
+            }
+          } catch (error) {
+            console.error('Error updating user:', error);
+            alert(`Error updating user: ${error.message}`);
+          }
+        });
+      } catch (error) {
+        console.error('Error fetching user details:', error);
+        alert(`Error: ${error.message}`);
+      }
     }
     
     // Delete User

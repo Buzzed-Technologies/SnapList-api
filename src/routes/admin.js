@@ -164,6 +164,42 @@ router.get('/users', async (req, res) => {
 });
 
 /**
+ * @api {get} /api/admin/users/:id Get user by ID
+ * @apiDescription Get detailed information about a specific user
+ * @apiName GetUserById
+ * @apiGroup Admin
+ * 
+ * @apiParam {String} id User ID
+ * 
+ * @apiSuccess {Object} user User details
+ */
+router.get('/users/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const result = await getUserById(id);
+    
+    if (!result.success) {
+      return res.status(404).json({
+        success: false,
+        message: result.message
+      });
+    }
+    
+    res.json({
+      success: true,
+      user: result.user
+    });
+  } catch (error) {
+    console.error('Error fetching user:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch user'
+    });
+  }
+});
+
+/**
  * @api {delete} /api/admin/users/:id Delete a user
  * @apiDescription Delete a user and all associated data
  * @apiName DeleteUser
@@ -299,15 +335,112 @@ router.get('/listings', async (req, res) => {
 });
 
 /**
+ * @api {get} /api/admin/listings/:id Get listing by ID
+ * @apiDescription Get detailed information about a specific listing
+ * @apiName GetListingById
+ * @apiGroup Admin
+ * 
+ * @apiParam {String} id Listing ID
+ * 
+ * @apiSuccess {Object} listing Listing details
+ */
+router.get('/listings/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Get listing from database
+    const { data: listing, error } = await supabase
+      .from('listings')
+      .select(`
+        *,
+        users(name, phone)
+      `)
+      .eq('id', id)
+      .single();
+    
+    if (error) throw error;
+    
+    if (!listing) {
+      return res.status(404).json({
+        success: false,
+        message: 'Listing not found'
+      });
+    }
+    
+    res.json({
+      success: true,
+      listing
+    });
+  } catch (error) {
+    console.error('Error fetching listing:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch listing'
+    });
+  }
+});
+
+/**
+ * @api {put} /api/admin/listings/:id Update a listing
+ * @apiDescription Update listing details
+ * @apiName UpdateListing
+ * @apiGroup Admin
+ * 
+ * @apiParam {String} id Listing ID
+ * @apiParam {String} [title] Listing title
+ * @apiParam {String} [description] Listing description
+ * @apiParam {Number} [price] Listing price
+ * @apiParam {String} [status] Listing status (active, pending, sold, removed)
+ * 
+ * @apiSuccess {Boolean} success Indicates if the update was successful
+ * @apiSuccess {Object} listing Updated listing
+ */
+router.put('/listings/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, description, price, status } = req.body;
+    
+    const updates = {};
+    if (title !== undefined) updates.title = title;
+    if (description !== undefined) updates.description = description;
+    if (price !== undefined) updates.price = price;
+    if (status !== undefined) updates.status = status;
+    
+    updates.updated_at = new Date().toISOString();
+    
+    // Update listing in database
+    const { data: updatedListing, error } = await supabase
+      .from('listings')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    
+    res.json({
+      success: true,
+      listing: updatedListing
+    });
+  } catch (error) {
+    console.error('Error updating listing:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update listing'
+    });
+  }
+});
+
+/**
  * @api {put} /api/admin/listings/:id/status Update listing status
- * @apiDescription Update the status of a listing
+ * @apiDescription Update just the status of a listing
  * @apiName UpdateListingStatus
  * @apiGroup Admin
  * 
  * @apiParam {String} id Listing ID
- * @apiParam {String} status New status
+ * @apiParam {String} status New status (active, pending, sold, removed)
  * 
- * @apiSuccess {Boolean} success Indicates if the operation was successful
+ * @apiSuccess {Boolean} success Indicates if the status update was successful
  */
 router.put('/listings/:id/status', async (req, res) => {
   try {
@@ -321,10 +454,22 @@ router.put('/listings/:id/status', async (req, res) => {
       });
     }
     
+    // Validate status
+    const validStatuses = ['active', 'pending', 'sold', 'removed'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid status. Must be one of: ' + validStatuses.join(', ')
+      });
+    }
+    
     // Update listing status
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('listings')
-      .update({ status, updated_at: new Date() })
+      .update({ 
+        status,
+        updated_at: new Date().toISOString()
+      })
       .eq('id', id);
     
     if (error) throw error;
@@ -621,6 +766,65 @@ router.post('/support-chats/:id/respond', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to send response'
+    });
+  }
+});
+
+/**
+ * @api {put} /api/admin/support-chats/:id/status Update support chat status
+ * @apiDescription Update the status of a support chat
+ * @apiName UpdateSupportChatStatus
+ * @apiGroup Admin
+ * 
+ * @apiParam {String} id Support chat ID
+ * @apiParam {String} status New status (pending, responded, resolved)
+ * 
+ * @apiSuccess {Boolean} success Indicates if the status update was successful
+ */
+router.put('/support-chats/:id/status', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    
+    if (!status) {
+      return res.status(400).json({
+        success: false,
+        message: 'Status is required'
+      });
+    }
+    
+    // Validate status
+    const validStatuses = ['pending', 'responded', 'resolved'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid status. Must be one of: ' + validStatuses.join(', ')
+      });
+    }
+    
+    // Update chat status
+    const { data: chat, error } = await supabase
+      .from('support_chats')
+      .update({ 
+        status,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    
+    res.json({
+      success: true,
+      message: 'Support chat status updated successfully',
+      chat
+    });
+  } catch (error) {
+    console.error('Error updating support chat status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update status'
     });
   }
 });

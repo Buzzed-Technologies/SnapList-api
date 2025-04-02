@@ -673,7 +673,7 @@
         
         // Get the first image or use a placeholder
         const imageUrl = listing.images && listing.images.length > 0 
-          ? listing.images[0] 
+          ? `https://lsrdviupiuoztnccwdxk.supabase.co/storage/v1/object/public/snaplist-images/uploads/${listing.images[0]}`
           : '/static/img/placeholder.png';
         
         card.innerHTML = `
@@ -782,9 +782,132 @@
     }
     
     // Edit Listing
-    function editListing(listingId) {
-      alert('Edit listing: ' + listingId);
-      // In a real implementation, this would open an edit modal or page
+    async function editListing(listingId) {
+      try {
+        const response = await fetch(`/api/admin/listings/${listingId}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch listing details');
+        }
+        
+        const data = await response.json();
+        if (!data.success) {
+          throw new Error(data.message || 'Failed to fetch listing details');
+        }
+        
+        const listing = data.listing;
+        
+        // Create modal content for editing
+        const modalHTML = `
+          <div class="modal-header">
+            <h2>Edit Listing</h2>
+            <button id="closeEditModal" class="close-button">&times;</button>
+          </div>
+          <div class="modal-body">
+            <form id="editListingForm">
+              <div class="form-group">
+                <label for="title">Title</label>
+                <input type="text" id="title" name="title" value="${listing.title}" required>
+              </div>
+              <div class="form-group">
+                <label for="description">Description</label>
+                <textarea id="description" name="description" rows="4" required>${listing.description}</textarea>
+              </div>
+              <div class="form-group">
+                <label for="price">Price ($)</label>
+                <input type="number" id="price" name="price" min="0" step="0.01" value="${listing.price}" required>
+              </div>
+              <div class="form-group">
+                <label for="status">Status</label>
+                <select id="status" name="status" required>
+                  <option value="active" ${listing.status === 'active' ? 'selected' : ''}>Active</option>
+                  <option value="pending" ${listing.status === 'pending' ? 'selected' : ''}>Pending</option>
+                  <option value="sold" ${listing.status === 'sold' ? 'selected' : ''}>Sold</option>
+                  <option value="removed" ${listing.status === 'removed' ? 'selected' : ''}>Removed</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Images</label>
+                <div class="image-preview">
+                  ${listing.images && listing.images.map(img => 
+                    `<div class="image-item">
+                      <img src="https://lsrdviupiuoztnccwdxk.supabase.co/storage/v1/object/public/snaplist-images/uploads/${img}" alt="Listing image">
+                    </div>`
+                  ).join('') || 'No images available'}
+                </div>
+              </div>
+              <div class="form-actions">
+                <button type="submit" class="primary-button">Save Changes</button>
+                <button type="button" id="cancelEdit" class="secondary-button">Cancel</button>
+              </div>
+            </form>
+          </div>
+        `;
+        
+        // Create and display modal
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.innerHTML = `<div class="modal-content">${modalHTML}</div>`;
+        document.body.appendChild(modal);
+        
+        // Show the modal
+        setTimeout(() => {
+          modal.classList.add('show');
+        }, 10);
+        
+        // Close modal handlers
+        document.getElementById('closeEditModal').addEventListener('click', () => {
+          modal.classList.remove('show');
+          setTimeout(() => modal.remove(), 300);
+        });
+        
+        document.getElementById('cancelEdit').addEventListener('click', () => {
+          modal.classList.remove('show');
+          setTimeout(() => modal.remove(), 300);
+        });
+        
+        // Form submission
+        document.getElementById('editListingForm').addEventListener('submit', async (e) => {
+          e.preventDefault();
+          
+          try {
+            const formData = {
+              title: document.getElementById('title').value,
+              description: document.getElementById('description').value,
+              price: parseFloat(document.getElementById('price').value),
+              status: document.getElementById('status').value
+            };
+            
+            const updateResponse = await fetch(`/api/admin/listings/${listingId}`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(formData)
+            });
+            
+            if (!updateResponse.ok) {
+              throw new Error('Failed to update listing');
+            }
+            
+            const updateData = await updateResponse.json();
+            
+            if (updateData.success) {
+              alert('Listing updated successfully');
+              modal.classList.remove('show');
+              setTimeout(() => modal.remove(), 300);
+              fetchListings(); // Refresh the listings
+            } else {
+              throw new Error(updateData.message || 'Failed to update listing');
+            }
+          } catch (error) {
+            console.error('Error updating listing:', error);
+            alert(`Error updating listing: ${error.message}`);
+          }
+        });
+      } catch (error) {
+        console.error('Error fetching listing details:', error);
+        alert(`Error: ${error.message}`);
+      }
     }
     
     // Remove Listing
@@ -853,4 +976,4 @@
     });
   </script>
 </body>
-</html> 
+</html>

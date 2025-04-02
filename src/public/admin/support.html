@@ -977,12 +977,12 @@
       }
       
       try {
-        const response = await fetch(`/api/admin/support-chats/${chatId}/reply`, {
+        const response = await fetch(`/api/admin/support-chats/${chatId}/respond`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ message: reply })
+          body: JSON.stringify({ response: reply })
         });
         
         if (!response.ok) {
