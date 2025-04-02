@@ -34,7 +34,7 @@ async function createEbayListing(listing, imageUrls) {
         Title: listing.title,
         Description: listing.description,
         PrimaryCategory: {
-          CategoryID: '11450' // Default to Clothing, Shoes & Accessories
+          CategoryID: '185116' // Use a valid leaf category (Men's T-Shirts)
         },
         StartPrice: listing.price,
         ConditionID: 1000, // New
@@ -42,10 +42,11 @@ async function createEbayListing(listing, imageUrls) {
         Currency: 'USD',
         Location: 'United States', // Add required Location field
         DispatchTimeMax: 3, // 3 days handling time
-        ListingDuration: 'Days_30', // Correct way to specify duration
+        ListingDuration: 'GTC', // Good 'Til Cancelled - required for fixed price listings
         ListingType: 'FixedPriceItem',
-        PaymentMethods: ['PayPal'],
-        PayPalEmailAddress: 'seller@example.com',
+        // Remove PayPal as it's not supported with managed payments
+        // PaymentMethods: ['PayPal'],
+        // PayPalEmailAddress: 'seller@example.com',
         PictureDetails: {
           // eBay requires images to be hosted on a public server with https URLs
           // Remove any local or non-https URLs
