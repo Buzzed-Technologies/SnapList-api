@@ -290,8 +290,17 @@ function generateEbayXml(data) {
  */
 function extractEbayItemId(responseData) {
   // In a real implementation, you would use a proper XML parser
-  const itemIdMatch = responseData.match(/<ItemID>(\d+)<\/ItemID>/);
-  return itemIdMatch ? itemIdMatch[1] : null;
+  console.log('eBay response:', responseData); // Add debugging to see the actual response
+  
+  // Try more flexible pattern matching that handles potential namespaces
+  const itemIdMatch = responseData.match(/<([\w:]*)?ItemID>([^<]+)<\/([\w:]*)?ItemID>/);
+  if (itemIdMatch && itemIdMatch[2]) {
+    return itemIdMatch[2];
+  }
+  
+  // If still not found, try another common format
+  const altMatch = responseData.match(/ItemID[^>]*>([^<]+)</);
+  return altMatch ? altMatch[1] : null;
 }
 
 /**
