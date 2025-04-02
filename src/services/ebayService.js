@@ -40,16 +40,124 @@ async function createEbayListing(listing, imageUrls) {
       return desc;
     };
     
+    // Process image URLs to ensure they're full URLs
+    const processedImageUrls = (imageUrls || []).map(url => {
+      // If the URL is already a full URL, use it as is
+      if (url && url.startsWith('http')) {
+        return url;
+      }
+      
+      // Otherwise, assume it's just the filename and construct the full Supabase URL
+      return `https://lsrdviupiuoztnccwdxk.supabase.co/storage/v1/object/public/snaplist-images/uploads/${url}`;
+    });
+    
+    // Map condition to eBay condition ID
+    const getConditionID = (condition) => {
+      const conditionMap = {
+        'New': 1000,
+        'New with tags': 1000,
+        'New without tags': 1500,
+        'Used - Excellent': 2000,
+        'Used - Good': 2500,
+        'Used - Fair': 3000,
+        'Used - Poor': 3500
+      };
+      
+      return conditionMap[condition] || 1000; // Default to New if not found
+    };
+    
+    // Map category to eBay category ID - could be expanded with more mappings
+    const getCategoryID = (category) => {
+      const categoryMap = {
+        // Men's Clothing
+        'T-Shirts': '185116',
+        'Shirts': '185101',
+        'Pants': '185105',
+        'Jeans': '11483',
+        'Shorts': '15689',
+        'Suits': '3001',
+        'Sweaters': '11484',
+        'Coats & Jackets': '57988',
+        'Activewear': '185099',
+        
+        // Women's Clothing
+        'Dresses': '63861',
+        'Tops & Blouses': '53159',
+        'Skirts': '63864',
+        "Women's Pants": '63863',
+        "Women's Jeans": '11554',
+        "Women's Shorts": '11555',
+        "Women's Suits": '63866',
+        "Women's Sweaters": '63866',
+        "Women's Coats": '63862',
+        "Women's Activewear": '185099',
+        
+        // Footwear
+        'Shoes': '93427',
+        "Men's Shoes": '93427',
+        "Women's Shoes": '55793',
+        'Athletic Shoes': '15709',
+        'Boots': '11498',
+        'Sandals': '62107',
+        
+        // Accessories
+        'Accessories': '4250',
+        'Watches': '14324',
+        'Belts': '2993',
+        'Hats': '52365',
+        'Sunglasses': '79720',
+        'Wallets': '2996',
+        'Bags & Purses': '169291',
+        'Jewelry': '281',
+        
+        // Electronics
+        'Smartphones': '9355',
+        'Laptops': '177',
+        'Tablets': '171485',
+        'Headphones': '112529',
+        'Cameras': '625',
+        'Smart Watches': '178893',
+        'Video Games': '1249',
+        'Gaming Consoles': '139971',
+        
+        // Home & Garden
+        'Furniture': '3197',
+        'Home Decor': '10033',
+        'Kitchen': '20625',
+        'Bedding': '20444',
+        'Bath': '133696',
+        'Tools': '631',
+        
+        // Baby & Kids
+        'Baby Clothing': '3082',
+        'Toys': '220',
+        'Kids Clothing': '171146',
+        
+        // Sports & Outdoors
+        'Sporting Goods': '888',
+        'Fitness Equipment': '15273',
+        'Cycling': '7294',
+        'Camping': '16034',
+        
+        // Books & Media
+        'Books': '267',
+        'Movies': '11232',
+        'Music': '11233'
+      };
+      
+      return categoryMap[category] || '185116'; // Default to T-Shirts if not found
+    };
+    
     // Prepare the listing data
     const ebayListing = {
       Item: {
         Title: listing.title,
         Description: sanitizeDescription(listing.description),
         PrimaryCategory: {
-          CategoryID: '185116' // Use a valid leaf category (Men's T-Shirts)
+          CategoryID: getCategoryID(listing.category)
         },
         StartPrice: listing.price,
-        ConditionID: 1000, // New
+        ConditionID: getConditionID(listing.condition),
         Country: 'US',
         Currency: 'USD',
         Location: 'United States', // Add required Location field
@@ -61,7 +169,7 @@ async function createEbayListing(listing, imageUrls) {
           NameValueList: [
             {
               Name: 'Brand',
-              Value: listing.brand || 'Unbranded' // Use the listing's brand or default to Unbranded
+              Value: listing.brand || 'Unbranded'
             },
             {
               Name: 'Model',
@@ -73,13 +181,10 @@ async function createEbayListing(listing, imageUrls) {
             }
           ]
         },
-        // Remove PayPal as it's not supported with managed payments
-        // PaymentMethods: ['PayPal'],
-        // PayPalEmailAddress: 'seller@example.com',
         PictureDetails: {
           // eBay requires images to be hosted on a public server with https URLs
-          // Remove any local or non-https URLs
-          PictureURL: imageUrls
+          // Use processed URLs that are guaranteed to be full URLs
+          PictureURL: processedImageUrls
             .filter(url => url && url.startsWith('https://'))
             .slice(0, 12) // eBay allows up to 12 images
         },
@@ -98,10 +203,25 @@ async function createEbayListing(listing, imageUrls) {
           }
         },
         Site: 'US',
-        Country: 'US', // Ensure Country is at the correct level
-        Currency: 'USD' // Ensure Currency is at the correct level
+        Country: 'US',
+        Currency: 'USD'
       }
     };
+    
+    // Add more item specifics if available
+    if (listing.color) {
+      ebayListing.Item.ItemSpecifics.NameValueList.push({
+        Name: 'Color',
+        Value: listing.color
+      });
+    }
+    
+    if (listing.size) {
+      ebayListing.Item.ItemSpecifics.NameValueList.push({
+        Name: 'Size',
+        Value: listing.size
+      });
+    }
     
     // Check if we have valid pictures before proceeding
     if (!ebayListing.Item.PictureDetails.PictureURL || ebayListing.Item.PictureDetails.PictureURL.length === 0) {
