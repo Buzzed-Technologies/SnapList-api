@@ -1,7 +1,13 @@
 document.addEventListener('DOMContentLoaded', () => {
-  // Get listing ID from URL path: /share/listing/:id
-  const pathParts = window.location.pathname.split('/');
-  const listingId = pathParts[pathParts.length - 1];
+  // Try to get listing ID from URL query parameters first
+  const urlParams = new URLSearchParams(window.location.search);
+  let listingId = urlParams.get('id');
+  
+  // If not found in query, try path: /share/listing/:id
+  if (!listingId) {
+    const pathParts = window.location.pathname.split('/');
+    listingId = pathParts[pathParts.length - 1];
+  }
   
   if (!listingId) {
     showError('No listing ID provided');

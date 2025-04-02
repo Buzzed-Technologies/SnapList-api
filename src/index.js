@@ -31,8 +31,31 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Set public directory explicitly using __dirname
+const publicPath = path.join(__dirname, 'public');
+console.log('Public directory path:', publicPath);
+
 // Serve static files for shared listings
-app.use('/static', express.static(path.join(__dirname, 'public')));
+app.use('/static', express.static(publicPath));
+
+// Add a direct route for listing.html
+app.get('/share/listing/html', (req, res) => {
+  try {
+    const htmlPath = path.join(publicPath, 'listing.html');
+    console.log('Serving HTML from:', htmlPath);
+    
+    // First check if the file exists
+    if (fs.existsSync(htmlPath)) {
+      res.sendFile(htmlPath);
+    } else {
+      console.error('HTML file not found at path:', htmlPath);
+      res.status(404).send('Listing page not found');
+    }
+  } catch (error) {
+    console.error('Error serving listing HTML:', error);
+    res.status(500).send('Error loading listing page');
+  }
+});
 
 // Routes
 app.use('/api/users', usersRoutes);

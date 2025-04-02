@@ -13,8 +13,8 @@ router.get('/listing/:id', async (req, res) => {
       return res.status(404).send('Listing not found');
     }
     
-    // Render HTML template
-    res.sendFile(path.join(__dirname, '../public/listing.html'));
+    // Redirect to the HTML route with the ID as a query parameter
+    res.redirect(`/share/listing/html?id=${listingId}`);
   } catch (error) {
     console.error('Error serving shared listing:', error);
     res.status(500).send('Error loading listing');

@@ -4,9 +4,17 @@
     {
       "src": "src/index.js",
       "use": "@vercel/node"
+    },
+    {
+      "src": "src/public/**",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
+    {
+      "src": "/static/(.*)",
+      "dest": "src/public/$1"
+    },
     {
       "src": "/api/(.*)",
       "dest": "src/index.js"
@@ -17,10 +25,6 @@
     },
     {
       "src": "/share/(.*)",
-      "dest": "src/index.js"
-    },
-    {
-      "src": "/static/(.*)",
       "dest": "src/index.js"
     }
   ],
