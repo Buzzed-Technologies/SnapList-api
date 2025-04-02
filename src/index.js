@@ -7,8 +7,8 @@ const scheduler = require('node-schedule');
 const os = require('os');
 
 // Import routes
-const usersRoutes = require('./routes/users');
-const listingsRoutes = require('./routes/listings');
+const userRoutes = require('./routes/users');
+const listingRoutes = require('./routes/listings');
 const profitsRoutes = require('./routes/profits');
 const imagesRoutes = require('./routes/images');
 const payoutsRoutes = require('./routes/payouts');
@@ -101,14 +101,14 @@ function adminAuthCheck(req, res, next) {
   next();
 }
 
-// Routes
-app.use('/api/users', usersRoutes);
-app.use('/api/listings', listingsRoutes);
+// Mount routes
+app.use('/api/users', userRoutes);
+app.use('/api/listings', listingRoutes);
 app.use('/api/profits', profitsRoutes);
 app.use('/api/images', imagesRoutes);
 app.use('/api/payouts', payoutsRoutes);
 app.use('/share', shareRoutes);
-app.use('/api/admin', adminAuthCheck, adminRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Admin pages routes
 app.get('/admin', (req, res) => {

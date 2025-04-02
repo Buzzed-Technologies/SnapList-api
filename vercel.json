@@ -24,8 +24,29 @@
       "dest": "src/index.js"
     },
     {
+      "src": "/admin/users.html",
+      "dest": "src/index.js"
+    },
+    {
+      "src": "/admin/listings.html",
+      "dest": "src/index.js"
+    },
+    {
+      "src": "/admin/payouts.html",
+      "dest": "src/index.js"
+    },
+    {
+      "src": "/admin/support.html",
+      "dest": "src/index.js"
+    },
+    {
       "src": "/admin",
       "dest": "src/index.js"
+    },
+    {
+      "src": "/admin/(.*)",
+      "dest": "src/public/admin/$1",
+      "check": true
     },
     {
       "src": "/terms",

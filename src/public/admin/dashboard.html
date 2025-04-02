@@ -593,7 +593,7 @@
         
         const data = await response.json();
         if (data.success && data.listings.length > 0) {
-          const salesTableBody = document.querySelector('#recentSales tbody');
+          const salesTableBody = document.getElementById('recentSales');
           salesTableBody.innerHTML = ''; // Clear existing rows
           
           data.listings.forEach(listing => {
@@ -603,7 +603,7 @@
             const row = document.createElement('tr');
             row.innerHTML = `
               <td>${listing.title}</td>
-              <td>${listing.users.name}</td>
+              <td>${listing.users?.name || 'Unknown'}</td>
               <td>$${listing.price.toFixed(2)}</td>
               <td>$${commission}</td>
               <td>${date}</td>
@@ -612,7 +612,7 @@
             salesTableBody.appendChild(row);
           });
         } else {
-          document.querySelector('#recentSales tbody').innerHTML = `
+          document.getElementById('recentSales').innerHTML = `
             <tr>
               <td colspan="6" style="text-align: center;">No recent sales found</td>
             </tr>
@@ -620,7 +620,7 @@
         }
       } catch (error) {
         console.error('Error fetching recent sales:', error);
-        document.querySelector('#recentSales tbody').innerHTML = `
+        document.getElementById('recentSales').innerHTML = `
           <tr>
             <td colspan="6" style="text-align: center;">Failed to load recent sales</td>
           </tr>
@@ -638,28 +638,28 @@
         
         const data = await response.json();
         if (data.success && data.payouts.length > 0) {
-          const payoutsTableBody = document.querySelector('#pendingPayouts tbody');
+          const payoutsTableBody = document.getElementById('pendingPayouts');
           payoutsTableBody.innerHTML = ''; // Clear existing rows
           
           data.payouts.forEach(payout => {
             const requestDate = new Date(payout.created_at).toLocaleDateString();
             let paymentMethod = 'Unknown';
             
-            if (payout.zelle_id) {
-              paymentMethod = `Zelle (${payout.zelle_id})`;
-            } else if (payout.paypal_id) {
-              paymentMethod = `PayPal (${payout.paypal_id})`;
-            } else if (payout.venmo_id) {
-              paymentMethod = `Venmo (${payout.venmo_id})`;
-            } else if (payout.cashapp_id) {
-              paymentMethod = `Cash App (${payout.cashapp_id})`;
+            if (payout.payment_method === 'zelle') {
+              paymentMethod = `Zelle`;
+            } else if (payout.payment_method === 'paypal') {
+              paymentMethod = `PayPal`;
+            } else if (payout.payment_method === 'venmo') {
+              paymentMethod = `Venmo`;
+            } else if (payout.payment_method === 'cashapp') {
+              paymentMethod = `Cash App`;
             }
             
             const row = document.createElement('tr');
             row.innerHTML = `
-              <td>${payout.users.name}</td>
+              <td>${payout.user_name}</td>
               <td>$${payout.amount.toFixed(2)}</td>
-              <td>${payout.items_count || '-'}</td>
+              <td>-</td>
               <td>${requestDate}</td>
               <td>${paymentMethod}</td>
               <td>
@@ -677,7 +677,7 @@
             });
           });
         } else {
-          document.querySelector('#pendingPayouts tbody').innerHTML = `
+          document.getElementById('pendingPayouts').innerHTML = `
             <tr>
               <td colspan="6" style="text-align: center;">No pending payouts found</td>
             </tr>
@@ -685,7 +685,7 @@
         }
       } catch (error) {
         console.error('Error fetching pending payouts:', error);
-        document.querySelector('#pendingPayouts tbody').innerHTML = `
+        document.getElementById('pendingPayouts').innerHTML = `
           <tr>
             <td colspan="6" style="text-align: center;">Failed to load pending payouts</td>
           </tr>
@@ -702,8 +702,8 @@
         }
         
         const data = await response.json();
-        if (data.success && data.chats.length > 0) {
-          const supportTableBody = document.querySelector('#supportRequests tbody');
+        if (data.success && data.chats && data.chats.length > 0) {
+          const supportTableBody = document.getElementById('supportRequests');
           supportTableBody.innerHTML = ''; // Clear existing rows
           
           data.chats.forEach(chat => {
@@ -711,7 +711,7 @@
             
             const row = document.createElement('tr');
             row.innerHTML = `
-              <td>${chat.users.name}</td>
+              <td>${chat.users?.name || 'Anonymous'}</td>
               <td>${chat.message.substring(0, 50)}${chat.message.length > 50 ? '...' : ''}</td>
               <td>${requestDate}</td>
               <td><span class="status-badge status-pending">Pending</span></td>
@@ -736,7 +736,7 @@
             });
           });
         } else {
-          document.querySelector('#supportRequests tbody').innerHTML = `
+          document.getElementById('supportRequests').innerHTML = `
             <tr>
               <td colspan="5" style="text-align: center;">No pending support requests found</td>
             </tr>
@@ -744,7 +744,7 @@
         }
       } catch (error) {
         console.error('Error fetching support requests:', error);
-        document.querySelector('#supportRequests tbody').innerHTML = `
+        document.getElementById('supportRequests').innerHTML = `
           <tr>
             <td colspan="5" style="text-align: center;">Failed to load support requests</td>
           </tr>
