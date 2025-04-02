@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Listings - SnapList Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/png" href="/static/img/logo.png">
+  <style>
+    :root {
+      --primary-color: #FF6A00;
+      --primary-light: #FFF0E6;
+      --primary-dark: #E56000;
+      --text-primary: #1D1D1D;
+      --text-secondary: #666666;
+      --background-color: #F9F9FB;
+      --card-background: #FFFFFF;
+      --border-color: #E5E5E5;
+      --shadow-color: rgba(0, 0, 0, 0.05);
+      --success-color: #34C759;
+      --warning-color: #FF9500;
+      --danger-color: #FF3B30;
+      --sidebar-width: 240px;
+    }
+    
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --primary-color: #FF6A00;
+        --primary-light: #2C1A0D;
+        --primary-dark: #FF8A3F;
+        --text-primary: #FFFFFF;
+        --text-secondary: #AAAAAA;
+        --background-color: #1A1A1A;
+        --card-background: #222222;
+        --border-color: #333333;
+        --shadow-color: rgba(0, 0, 0, 0.2);
+      }
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Inter', sans-serif;
+    }
+    
+    body {
+      background-color: var(--background-color);
+      color: var(--text-primary);
+      display: flex;
+      min-height: 100vh;
+    }
+    
+    /* Sidebar Styles */
+    .sidebar {
+      width: var(--sidebar-width);
+      background-color: var(--card-background);
+      border-right: 1px solid var(--border-color);
+      padding: 24px 0;
+      height: 100vh;
+      position: fixed;
+      top: 0;
+      left: 0;
+      overflow-y: auto;
+    }
+    
+    .sidebar-header {
+      padding: 0 20px 20px;
+      margin-bottom: 20px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+    }
+    
+    .sidebar-header img {
+      width: 32px;
+      height: 32px;
+      margin-right: 12px;
+    }
+    
+    .sidebar-header h1 {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--primary-color);
+    }
+    
+    .nav-section {
+      margin-bottom: 16px;
+    }
+    
+    .nav-section-title {
+      text-transform: uppercase;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      padding: 8px 20px;
+      margin-bottom: 4px;
+    }
+    
+    .nav-item {
+      display: flex;
+      align-items: center;
+      padding: 10px 20px;
+      color: var(--text-primary);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      border-left: 3px solid transparent;
+      transition: all 0.2s;
+    }
+    
+    .nav-item.active {
+      background-color: var(--primary-light);
+      color: var(--primary-color);
+      border-left-color: var(--primary-color);
+    }
+    
+    .nav-item:hover:not(.active) {
+      background-color: rgba(0, 0, 0, 0.03);
+    }
+    
+    .nav-item-icon {
+      width: 18px;
+      height: 18px;
+      margin-right: 12px;
+      opacity: 0.8;
+    }
+    
+    .sidebar-footer {
+      padding: 16px 20px;
+      border-top: 1px solid var(--border-color);
+      margin-top: auto;
+    }
+    
+    .logout-button {
+      padding: 8px 12px;
+      background-color: var(--background-color);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+    
+    .logout-button:hover {
+      background-color: var(--danger-color);
+      color: white;
+      border-color: var(--danger-color);
+    }
+    
+    /* Main Content Styles */
+    .main-content {
+      flex: 1;
+      margin-left: var(--sidebar-width);
+      padding: 24px;
+    }
+    
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+    
+    .page-title {
+      font-size: 24px;
+      font-weight: 700;
+    }
+    
+    /* Search and Filter Bar */
+    .search-filter-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      background-color: var(--card-background);
+      padding: 16px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px var(--shadow-color);
+    }
+    
+    .search-box {
+      display: flex;
+      align-items: center;
+      background-color: var(--background-color);
+      border-radius: 8px;
+      padding: 0 12px;
+      flex: 1;
+      max-width: 320px;
+      border: 1px solid var(--border-color);
+    }
+    
+    .search-box input {
+      background: transparent;
+      border: none;
+      padding: 10px;
+      font-size: 14px;
+      color: var(--text-primary);
+      width: 100%;
+    }
+    
+    .search-box input:focus {
+      outline: none;
+    }
+    
+    .search-icon {
+      opacity: 0.5;
+      font-size: 16px;
+    }
+    
+    .filter-group {
+      display: flex;
+      gap: 10px;
+    }
+    
+    .filter-dropdown {
+      padding: 8px 12px;
+      background-color: var(--background-color);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      font-size: 14px;
+      color: var(--text-primary);
+    }
+    
+    .filter-dropdown:focus {
+      outline: none;
+      border-color: var(--primary-color);
+    }
+    
+    /* Listings Grid */
+    .listings-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    
+    .listing-card {
+      background-color: var(--card-background);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 12px var(--shadow-color);
+      transition: transform 0.2s;
+    }
+    
+    .listing-card:hover {
+      transform: translateY(-5px);
+    }
+    
+    .listing-image {
+      width: 100%;
+      height: 180px;
+      object-fit: cover;
+      border-bottom: 1px solid var(--border-color);
+    }
+    
+    .listing-content {
+      padding: 16px;
+    }
+    
+    .listing-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 6px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      height: 44px;
+    }
+    
+    .listing-price {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--primary-color);
+      margin-bottom: 10px;
+    }
+    
+    .listing-meta {
+      display: flex;
+      justify-content: space-between;
+      color: var(--text-secondary);
+      font-size: 12px;
+      margin-bottom: 10px;
+    }
+    
+    .listing-seller {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 50%;
+    }
+    
+    .listing-date {
+      text-align: right;
+    }
+    
+    .listing-status {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    
+    .status-active {
+      background-color: var(--success-color);
+      color: white;
+    }
+    
+    .status-sold {
+      background-color: var(--primary-color);
+      color: white;
+    }
+    
+    .status-pending {
+      background-color: var(--warning-color);
+      color: white;
+    }
+    
+    .status-removed {
+      background-color: var(--danger-color);
+      color: white;
+    }
+    
+    .listing-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    
+    .action-button {
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      flex: 1;
+      border: none;
+      transition: all 0.2s;
+    }
+    
+    .action-edit {
+      background-color: #007AFF;
+      color: white;
+    }
+    
+    .action-delete {
+      background-color: var(--danger-color);
+      color: white;
+    }
+    
+    .action-view {
+      background-color: var(--primary-color);
+      color: white;
+    }
+    
+    /* Loading */
+    .loading-indicator {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 200px;
+    }
+    
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid var(--border-color);
+      border-top: 4px solid var(--primary-color);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    /* Pagination */
+    .pagination {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 20px;
+    }
+    
+    .pagination-item {
+      margin: 0 4px;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .pagination-item:hover {
+      background-color: var(--primary-light);
+      color: var(--primary-color);
+    }
+    
+    .pagination-item.active {
+      background-color: var(--primary-color);
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <!-- Sidebar Navigation -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <img src="/static/img/logo.png" alt="SnapList Logo">
+      <h1>SnapList Admin</h1>
+    </div>
+    
+    <div class="nav-section">
+      <div class="nav-section-title">Overview</div>
+      <a href="/admin/dashboard.html" class="nav-item">
+        <span class="nav-item-icon">📊</span>
+        Dashboard
+      </a>
+    </div>
+    
+    <div class="nav-section">
+      <div class="nav-section-title">Management</div>
+      <a href="/admin/users.html" class="nav-item" data-section="users">
+        <span class="nav-item-icon">👤</span>
+        Users
+      </a>
+      <a href="/admin/listings.html" class="nav-item active" data-section="listings">
+        <span class="nav-item-icon">📦</span>
+        Listings
+      </a>
+      <a href="/admin/payouts.html" class="nav-item" data-section="payouts">
+        <span class="nav-item-icon">💰</span>
+        Payouts
+      </a>
+    </div>
+    
+    <div class="nav-section">
+      <div class="nav-section-title">Communications</div>
+      <a href="/admin/support.html" class="nav-item" data-section="support">
+        <span class="nav-item-icon">💬</span>
+        Support Chats
+      </a>
+    </div>
+    
+    <div class="nav-section">
+      <div class="nav-section-title">Settings</div>
+      <a href="#" class="nav-item">
+        <span class="nav-item-icon">⚙️</span>
+        Configuration
+      </a>
+    </div>
+    
+    <div class="sidebar-footer">
+      <button id="logoutButton" class="logout-button">Logout</button>
+    </div>
+  </aside>
+  
+  <!-- Main Content Area -->
+  <main class="main-content">
+    <header class="page-header">
+      <h1 class="page-title">Listings</h1>
+      <div class="date-display" id="currentDate"></div>
+    </header>
+    
+    <!-- Search and Filter Bar -->
+    <div class="search-filter-bar">
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="searchInput" placeholder="Search listings...">
+      </div>
+      
+      <div class="filter-group">
+        <select class="filter-dropdown" id="statusFilter">
+          <option value="all">All Listings</option>
+          <option value="active">Active</option>
+          <option value="sold">Sold</option>
+          <option value="pending">Pending</option>
+          <option value="removed">Removed</option>
+        </select>
+        
+        <select class="filter-dropdown" id="priceFilter">
+          <option value="all">All Prices</option>
+          <option value="0-50">Under $50</option>
+          <option value="50-100">$50 - $100</option>
+          <option value="100-250">$100 - $250</option>
+          <option value="250+">Over $250</option>
+        </select>
+        
+        <select class="filter-dropdown" id="sortFilter">
+          <option value="created_at:desc">Newest First</option>
+          <option value="created_at:asc">Oldest First</option>
+          <option value="price:asc">Price (Low to High)</option>
+          <option value="price:desc">Price (High to Low)</option>
+        </select>
+      </div>
+    </div>
+    
+    <!-- Listings Count -->
+    <div id="listingCount" style="margin-bottom: 20px; font-weight: 500;">Loading listings...</div>
+    
+    <!-- Listings Grid -->
+    <div id="listingsContainer">
+      <div class="loading-indicator">
+        <div class="loading-spinner"></div>
+      </div>
+    </div>
+    
+    <!-- Pagination -->
+    <div class="pagination" id="pagination">
+      <!-- Pagination will be dynamically generated -->
+    </div>
+  </main>
+  
+  <script>
+    // Authentication Check
+    function checkAuth() {
+      const isAuthenticated = localStorage.getItem('snaplist_admin_auth');
+      if (!isAuthenticated) {
+        window.location.href = '/admin/login.html';
+      }
+    }
+    
+    // Logout Function
+    document.getElementById('logoutButton').addEventListener('click', function() {
+      localStorage.removeItem('snaplist_admin_auth');
+      window.location.href = '/admin/login.html';
+    });
+    
+    // Display Current Date
+    function displayCurrentDate() {
+      const date = new Date();
+      const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+      document.getElementById('currentDate').textContent = date.toLocaleDateString('en-US', options);
+    }
+    
+    // Listings Management
+    let currentPage = 1;
+    const pageSize = 12; // Show 12 listings per page
+    let totalListings = 0;
+    let totalPages = 0;
+    let currentSort = 'created_at:desc';
+    let currentSearch = '';
+    let currentStatus = 'all';
+    let currentPriceRange = 'all';
+    
+    // Fetch Listings
+    async function fetchListings() {
+      try {
+        const container = document.getElementById('listingsContainer');
+        container.innerHTML = `
+          <div class="loading-indicator">
+            <div class="loading-spinner"></div>
+          </div>
+        `;
+        
+        let url = `/api/admin/listings?page=${currentPage}&limit=${pageSize}`;
+        
+        // Add sorting
+        if (currentSort) {
+          const [field, direction] = currentSort.split(':');
+          url += `&sort_by=${field}&sort_dir=${direction}`;
+        }
+        
+        // Add search
+        if (currentSearch) {
+          url += `&search=${encodeURIComponent(currentSearch)}`;
+        }
+        
+        // Add status filter
+        if (currentStatus !== 'all') {
+          url += `&status=${currentStatus}`;
+        }
+        
+        // Add price filter
+        if (currentPriceRange !== 'all') {
+          if (currentPriceRange === '250+') {
+            url += `&min_price=250`;
+          } else {
+            const [min, max] = currentPriceRange.split('-');
+            if (min) url += `&min_price=${min}`;
+            if (max) url += `&max_price=${max}`;
+          }
+        }
+        
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error('Failed to fetch listings');
+        }
+        
+        const data = await response.json();
+        if (data.success) {
+          // Update listing count
+          document.getElementById('listingCount').textContent = `${data.count} listings found`;
+          
+          // Calculate total pages
+          totalListings = data.count;
+          totalPages = Math.ceil(totalListings / pageSize);
+          
+          // Render listings
+          renderListings(data.listings);
+          
+          // Update pagination
+          renderPagination();
+        } else {
+          throw new Error(data.message || 'Failed to fetch listings');
+        }
+      } catch (error) {
+        console.error('Error fetching listings:', error);
+        document.getElementById('listingsContainer').innerHTML = `
+          <div style="text-align: center; padding: 30px;">
+            <p>Error loading listings: ${error.message}</p>
+            <button class="action-button action-view" onclick="fetchListings()">Try Again</button>
+          </div>
+        `;
+      }
+    }
+    
+    // Render Listings
+    function renderListings(listings) {
+      const container = document.getElementById('listingsContainer');
+      
+      if (listings.length === 0) {
+        container.innerHTML = `
+          <div style="text-align: center; padding: 30px;">
+            <p>No listings found matching your search criteria.</p>
+          </div>
+        `;
+        return;
+      }
+      
+      const grid = document.createElement('div');
+      grid.className = 'listings-grid';
+      
+      listings.forEach(listing => {
+        const card = document.createElement('div');
+        card.className = 'listing-card';
+        
+        // Format the date
+        const listedDate = new Date(listing.created_at).toLocaleDateString();
+        
+        // Determine status class
+        let statusClass = 'status-active';
+        if (listing.status === 'sold') statusClass = 'status-sold';
+        else if (listing.status === 'pending') statusClass = 'status-pending';
+        else if (listing.status === 'removed') statusClass = 'status-removed';
+        
+        // Format price
+        const price = new Intl.NumberFormat('en-US', { 
+          style: 'currency', 
+          currency: 'USD',
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0
+        }).format(listing.price);
+        
+        // Get the first image or use a placeholder
+        const imageUrl = listing.images && listing.images.length > 0 
+          ? listing.images[0] 
+          : '/static/img/placeholder.png';
+        
+        card.innerHTML = `
+          <img src="${imageUrl}" alt="${listing.title}" class="listing-image" onerror="this.src='/static/img/placeholder.png'">
+          <div class="listing-content">
+            <h3 class="listing-title">${listing.title}</h3>
+            <div class="listing-price">${price}</div>
+            <div class="listing-meta">
+              <div class="listing-seller">By: ${listing.user_name || 'Unknown'}</div>
+              <div class="listing-date">${listedDate}</div>
+            </div>
+            <span class="listing-status ${statusClass}">${listing.status.charAt(0).toUpperCase() + listing.status.slice(1)}</span>
+            <div class="listing-actions">
+              <button class="action-button action-view" data-id="${listing.id}">View</button>
+              <button class="action-button action-edit" data-id="${listing.id}">Edit</button>
+              ${listing.status !== 'removed' ? `<button class="action-button action-delete" data-id="${listing.id}">Remove</button>` : ''}
+            </div>
+          </div>
+        `;
+        
+        grid.appendChild(card);
+      });
+      
+      container.innerHTML = '';
+      container.appendChild(grid);
+      
+      // Add event listeners to buttons
+      document.querySelectorAll('.action-view').forEach(button => {
+        button.addEventListener('click', function() {
+          viewListing(this.getAttribute('data-id'));
+        });
+      });
+      
+      document.querySelectorAll('.action-edit').forEach(button => {
+        button.addEventListener('click', function() {
+          editListing(this.getAttribute('data-id'));
+        });
+      });
+      
+      document.querySelectorAll('.action-delete').forEach(button => {
+        button.addEventListener('click', function() {
+          removeListing(this.getAttribute('data-id'));
+        });
+      });
+    }
+    
+    // Render Pagination
+    function renderPagination() {
+      const paginationContainer = document.getElementById('pagination');
+      paginationContainer.innerHTML = '';
+      
+      // Only show pagination if we have more than one page
+      if (totalPages <= 1) {
+        return;
+      }
+      
+      // Previous page button
+      const prevButton = document.createElement('div');
+      prevButton.className = `pagination-item ${currentPage === 1 ? 'disabled' : ''}`;
+      prevButton.textContent = '←';
+      prevButton.addEventListener('click', () => {
+        if (currentPage > 1) {
+          currentPage--;
+          fetchListings();
+        }
+      });
+      paginationContainer.appendChild(prevButton);
+      
+      // Page numbers
+      let startPage = Math.max(1, currentPage - 2);
+      let endPage = Math.min(totalPages, startPage + 4);
+      
+      // Adjust if we're near the end
+      if (endPage - startPage < 4) {
+        startPage = Math.max(1, endPage - 4);
+      }
+      
+      for (let i = startPage; i <= endPage; i++) {
+        const pageButton = document.createElement('div');
+        pageButton.className = `pagination-item ${i === currentPage ? 'active' : ''}`;
+        pageButton.textContent = i;
+        pageButton.addEventListener('click', () => {
+          currentPage = i;
+          fetchListings();
+        });
+        paginationContainer.appendChild(pageButton);
+      }
+      
+      // Next page button
+      const nextButton = document.createElement('div');
+      nextButton.className = `pagination-item ${currentPage === totalPages ? 'disabled' : ''}`;
+      nextButton.textContent = '→';
+      nextButton.addEventListener('click', () => {
+        if (currentPage < totalPages) {
+          currentPage++;
+          fetchListings();
+        }
+      });
+      paginationContainer.appendChild(nextButton);
+    }
+    
+    // View Listing
+    function viewListing(listingId) {
+      alert('View listing details: ' + listingId);
+      // In a real implementation, this would navigate to a listing details page
+    }
+    
+    // Edit Listing
+    function editListing(listingId) {
+      alert('Edit listing: ' + listingId);
+      // In a real implementation, this would open an edit modal or page
+    }
+    
+    // Remove Listing
+    async function removeListing(listingId) {
+      if (!confirm('Are you sure you want to remove this listing?')) {
+        return;
+      }
+      
+      try {
+        const response = await fetch(`/api/admin/listings/${listingId}/status`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ status: 'removed' })
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to remove listing');
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          alert('Listing removed successfully');
+          fetchListings(); // Refresh the list
+        } else {
+          throw new Error(data.message || 'Failed to remove listing');
+        }
+      } catch (error) {
+        console.error('Error removing listing:', error);
+        alert(`Error removing listing: ${error.message}`);
+      }
+    }
+    
+    // Event listeners for search and filters
+    document.getElementById('searchInput').addEventListener('input', function(e) {
+      currentSearch = e.target.value.trim();
+      currentPage = 1; // Reset to first page
+      fetchListings();
+    });
+    
+    document.getElementById('sortFilter').addEventListener('change', function(e) {
+      currentSort = e.target.value;
+      currentPage = 1; // Reset to first page
+      fetchListings();
+    });
+    
+    document.getElementById('statusFilter').addEventListener('change', function(e) {
+      currentStatus = e.target.value;
+      currentPage = 1; // Reset to first page
+      fetchListings();
+    });
+    
+    document.getElementById('priceFilter').addEventListener('change', function(e) {
+      currentPriceRange = e.target.value;
+      currentPage = 1; // Reset to first page
+      fetchListings();
+    });
+    
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function() {
+      checkAuth();
+      displayCurrentDate();
+      fetchListings();
+    });
+  </script>
+</body>
+</html> 

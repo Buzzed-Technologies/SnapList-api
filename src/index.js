@@ -145,6 +145,67 @@ app.get('/admin/dashboard.html', (req, res) => {
   }
 });
 
+// Add routes for all other admin pages
+app.get('/admin/users.html', (req, res) => {
+  try {
+    const htmlPath = path.join(publicPath, 'admin/users.html');
+    if (fs.existsSync(htmlPath)) {
+      res.sendFile(htmlPath);
+    } else {
+      console.error('Admin users page not found at path:', htmlPath);
+      res.status(404).send('Admin users page not found');
+    }
+  } catch (error) {
+    console.error('Error serving admin users page:', error);
+    res.status(500).send('Error loading admin users page');
+  }
+});
+
+app.get('/admin/listings.html', (req, res) => {
+  try {
+    const htmlPath = path.join(publicPath, 'admin/listings.html');
+    if (fs.existsSync(htmlPath)) {
+      res.sendFile(htmlPath);
+    } else {
+      console.error('Admin listings page not found at path:', htmlPath);
+      res.status(404).send('Admin listings page not found');
+    }
+  } catch (error) {
+    console.error('Error serving admin listings page:', error);
+    res.status(500).send('Error loading admin listings page');
+  }
+});
+
+app.get('/admin/payouts.html', (req, res) => {
+  try {
+    const htmlPath = path.join(publicPath, 'admin/payouts.html');
+    if (fs.existsSync(htmlPath)) {
+      res.sendFile(htmlPath);
+    } else {
+      console.error('Admin payouts page not found at path:', htmlPath);
+      res.status(404).send('Admin payouts page not found');
+    }
+  } catch (error) {
+    console.error('Error serving admin payouts page:', error);
+    res.status(500).send('Error loading admin payouts page');
+  }
+});
+
+app.get('/admin/support.html', (req, res) => {
+  try {
+    const htmlPath = path.join(publicPath, 'admin/support.html');
+    if (fs.existsSync(htmlPath)) {
+      res.sendFile(htmlPath);
+    } else {
+      console.error('Admin support page not found at path:', htmlPath);
+      res.status(404).send('Admin support page not found');
+    }
+  } catch (error) {
+    console.error('Error serving admin support page:', error);
+    res.status(500).send('Error loading admin support page');
+  }
+});
+
 // Health check route
 app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'OK', message: 'SnapList API is running' });

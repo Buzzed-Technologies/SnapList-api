@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SnapList Admin Login</title>
+  <title>Admin Login - SnapList</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -12,18 +12,23 @@
     :root {
       --primary-color: #FF6A00;
       --primary-light: #FFF0E6;
+      --primary-dark: #E56000;
       --text-primary: #1D1D1D;
       --text-secondary: #666666;
       --background-color: #F9F9FB;
       --card-background: #FFFFFF;
       --border-color: #E5E5E5;
       --shadow-color: rgba(0, 0, 0, 0.05);
+      --success-color: #34C759;
+      --warning-color: #FF9500;
+      --danger-color: #FF3B30;
     }
     
     @media (prefers-color-scheme: dark) {
       :root {
         --primary-color: #FF6A00;
         --primary-light: #2C1A0D;
+        --primary-dark: #FF8A3F;
         --text-primary: #FFFFFF;
         --text-secondary: #AAAAAA;
         --background-color: #1A1A1A;
@@ -43,16 +48,16 @@
     body {
       background-color: var(--background-color);
       color: var(--text-primary);
+      min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
-      min-height: 100vh;
     }
     
     .login-container {
       width: 100%;
       max-width: 420px;
-      padding: 40px;
+      padding: 40px 30px;
       background-color: var(--card-background);
       border-radius: 16px;
       box-shadow: 0 8px 24px var(--shadow-color);
@@ -60,40 +65,44 @@
     
     .login-header {
       text-align: center;
-      margin-bottom: 40px;
+      margin-bottom: 32px;
     }
     
-    .login-header img {
-      width: 80px;
-      height: 80px;
+    .login-logo {
+      width: 64px;
+      height: 64px;
       margin-bottom: 16px;
     }
     
-    .login-header h1 {
+    .login-title {
       font-size: 24px;
       font-weight: 700;
-      color: var(--primary-color);
       margin-bottom: 8px;
     }
     
-    .login-header p {
+    .login-subtitle {
+      font-size: 16px;
       color: var(--text-secondary);
-      font-size: 14px;
+    }
+    
+    .login-form {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
     }
     
     .form-group {
-      margin-bottom: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
     }
     
-    .form-group label {
-      display: block;
-      margin-bottom: 8px;
+    .form-label {
+      font-size: 14px;
       font-weight: 500;
-      color: var(--text-primary);
     }
     
-    .form-group input {
-      width: 100%;
+    .form-input {
       padding: 12px 16px;
       background-color: var(--background-color);
       border: 1px solid var(--border-color);
@@ -103,14 +112,14 @@
       transition: all 0.2s;
     }
     
-    .form-group input:focus {
+    .form-input:focus {
       outline: none;
       border-color: var(--primary-color);
-      box-shadow: 0 0 0 2px var(--primary-light);
+      box-shadow: 0 0 0 3px var(--primary-light);
     }
     
     .login-button {
-      width: 100%;
+      margin-top: 16px;
       padding: 14px;
       background-color: var(--primary-color);
       color: white;
@@ -123,64 +132,122 @@
     }
     
     .login-button:hover {
-      background-color: #E56000;
+      background-color: var(--primary-dark);
     }
     
-    .login-button:active {
-      transform: scale(0.98);
+    .login-button:disabled {
+      background-color: var(--border-color);
+      cursor: not-allowed;
     }
     
     .error-message {
-      color: #FF3B30;
+      color: var(--danger-color);
       font-size: 14px;
       margin-top: 16px;
       text-align: center;
       display: none;
+    }
+    
+    .info-text {
+      margin-top: 24px;
+      font-size: 14px;
+      color: var(--text-secondary);
+      text-align: center;
+    }
+    
+    .back-link {
+      display: block;
+      margin-top: 16px;
+      text-align: center;
+      color: var(--primary-color);
+      text-decoration: none;
+      font-size: 14px;
+    }
+    
+    .back-link:hover {
+      text-decoration: underline;
     }
   </style>
 </head>
 <body>
   <div class="login-container">
     <div class="login-header">
-      <img src="/static/img/logo.png" alt="SnapList Logo">
-      <h1>SnapList Admin</h1>
+      <img src="/static/img/logo.png" alt="SnapList Logo" class="login-logo">
+      <h1 class="login-title">Admin Dashboard</h1>
+      <p class="login-subtitle">Enter your credentials to continue</p>
     </div>
     
-    <form id="loginForm">
+    <form class="login-form" id="loginForm">
       <div class="form-group">
-        <label for="email">Email</label>
-        <input type="email" id="email" name="email" required>
+        <label for="email" class="form-label">Email Address</label>
+        <input type="email" id="email" class="form-input" placeholder="admin@snapkit.com" required>
       </div>
       
       <div class="form-group">
-        <label for="password">Password</label>
-        <input type="password" id="password" name="password" required>
+        <label for="password" class="form-label">Password</label>
+        <input type="password" id="password" class="form-input" placeholder="Enter your password" required>
       </div>
       
-      <button type="submit" class="login-button">Login</button>
+      <button type="submit" class="login-button" id="loginButton">Sign In</button>
       
-      <div id="errorMessage" class="error-message">
-        Invalid email or password
+      <div class="error-message" id="errorMessage">
+        Invalid email or password. Please try again.
       </div>
     </form>
+    
+    <p class="info-text">
+      This is a secured admin area. Unauthorized access is prohibited.
+    </p>
+    
+    <a href="/" class="back-link">← Back to SnapList</a>
   </div>
   
   <script>
+    // Check if already authenticated
+    function checkAuth() {
+      const isAuthenticated = localStorage.getItem('snaplist_admin_auth');
+      if (isAuthenticated) {
+        window.location.href = '/admin/dashboard.html';
+      }
+    }
+    
+    // Handle login form submission
     document.getElementById('loginForm').addEventListener('submit', function(e) {
       e.preventDefault();
       
-      const email = document.getElementById('email').value;
+      const email = document.getElementById('email').value.trim();
       const password = document.getElementById('password').value;
+      const errorMessage = document.getElementById('errorMessage');
+      const loginButton = document.getElementById('loginButton');
       
-      // Simple client-side authentication - in production, use a secure server-side auth
-      if (email === 'admin@snaplist.com' && password === 'fuckmyass124') {
-        // Set session
+      // Disable button and show loading state
+      loginButton.disabled = true;
+      loginButton.textContent = 'Signing in...';
+      errorMessage.style.display = 'none';
+      
+      // Hardcoded credentials check (in a real app, this would be on the server)
+      if (email === 'admin@snapkit.com' && password === 'fuckmyass124') {
+        // Set auth in local storage
         localStorage.setItem('snaplist_admin_auth', 'true');
+        
         // Redirect to dashboard
         window.location.href = '/admin/dashboard.html';
       } else {
-        document.getElementById('errorMessage').style.display = 'block';
+        // Show error message
+        errorMessage.style.display = 'block';
+        
+        // Re-enable button
+        loginButton.disabled = false;
+        loginButton.textContent = 'Sign In';
       }
+    });
+    
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function() {
+      checkAuth();
+      
+      // Focus on email input
+      document.getElementById('email').focus();
     });
   </script>
 </body>

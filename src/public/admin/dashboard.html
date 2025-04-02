@@ -427,26 +427,26 @@
     <div class="stats-grid">
       <div class="stat-card">
         <div class="stat-title">Total Revenue</div>
-        <div class="stat-value">$12,485.50</div>
-        <div class="stat-change positive">↑ 12.5% from last month</div>
+        <div class="stat-value" id="totalRevenue">$12,485.50</div>
+        <div class="stat-change positive" id="revenueChange">↑ 12.5% from last month</div>
       </div>
       
       <div class="stat-card">
         <div class="stat-title">Active Users</div>
-        <div class="stat-value">872</div>
-        <div class="stat-change positive">↑ 5.2% from last month</div>
+        <div class="stat-value" id="activeUsers">872</div>
+        <div class="stat-change positive" id="usersChange">↑ 5.2% from last month</div>
       </div>
       
       <div class="stat-card">
         <div class="stat-title">Active Listings</div>
-        <div class="stat-value">3,412</div>
-        <div class="stat-change positive">↑ 8.7% from last month</div>
+        <div class="stat-value" id="activeListings">3,412</div>
+        <div class="stat-change positive" id="listingsChange">↑ 8.7% from last month</div>
       </div>
       
       <div class="stat-card">
         <div class="stat-title">Completed Sales</div>
-        <div class="stat-value">678</div>
-        <div class="stat-change positive">↑ 15.3% from last month</div>
+        <div class="stat-value" id="completedSales">678</div>
+        <div class="stat-change positive" id="salesChange">↑ 15.3% from last month</div>
       </div>
     </div>
     
@@ -468,46 +468,9 @@
               <th>Status</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody id="recentSales">
             <tr>
-              <td>Vintage Leather Jacket</td>
-              <td>John Smith</td>
-              <td>$89.99</td>
-              <td>$2.25</td>
-              <td>Apr 1, 2025</td>
-              <td><span class="status-badge status-completed">Completed</span></td>
-            </tr>
-            <tr>
-              <td>Sony PlayStation 5</td>
-              <td>Emily Johnson</td>
-              <td>$499.99</td>
-              <td>$12.50</td>
-              <td>Apr 1, 2025</td>
-              <td><span class="status-badge status-completed">Completed</span></td>
-            </tr>
-            <tr>
-              <td>iPhone 13 Pro</td>
-              <td>Michael Brown</td>
-              <td>$899.99</td>
-              <td>$22.50</td>
-              <td>Mar 31, 2025</td>
-              <td><span class="status-badge status-completed">Completed</span></td>
-            </tr>
-            <tr>
-              <td>Nike Air Jordan 1</td>
-              <td>Sarah Wilson</td>
-              <td>$189.99</td>
-              <td>$4.75</td>
-              <td>Mar 31, 2025</td>
-              <td><span class="status-badge status-completed">Completed</span></td>
-            </tr>
-            <tr>
-              <td>Macbook Pro 16"</td>
-              <td>David Miller</td>
-              <td>$2,199.99</td>
-              <td>$55.00</td>
-              <td>Mar 30, 2025</td>
-              <td><span class="status-badge status-completed">Completed</span></td>
+              <td colspan="6" style="text-align: center;">Loading recent sales...</td>
             </tr>
           </tbody>
         </table>
@@ -532,39 +495,9 @@
               <th>Actions</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody id="pendingPayouts">
             <tr>
-              <td>Lisa Taylor</td>
-              <td>$235.75</td>
-              <td>3</td>
-              <td>Apr 2, 2025</td>
-              <td>Zelle (taylor@example.com)</td>
-              <td>
-                <button class="action-button action-view">View</button>
-                <button class="action-button action-edit">Process</button>
-              </td>
-            </tr>
-            <tr>
-              <td>Robert Chen</td>
-              <td>$89.50</td>
-              <td>1</td>
-              <td>Apr 1, 2025</td>
-              <td>PayPal (robert@example.com)</td>
-              <td>
-                <button class="action-button action-view">View</button>
-                <button class="action-button action-edit">Process</button>
-              </td>
-            </tr>
-            <tr>
-              <td>Amanda Garcia</td>
-              <td>$412.25</td>
-              <td>5</td>
-              <td>Apr 1, 2025</td>
-              <td>Venmo (@amanda-garcia)</td>
-              <td>
-                <button class="action-button action-view">View</button>
-                <button class="action-button action-edit">Process</button>
-              </td>
+              <td colspan="6" style="text-align: center;">Loading pending payouts...</td>
             </tr>
           </tbody>
         </table>
@@ -588,36 +521,9 @@
               <th>Actions</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody id="supportRequests">
             <tr>
-              <td>Christopher Lee</td>
-              <td>My payout hasn't arrived yet</td>
-              <td>Apr 2, 2025</td>
-              <td><span class="status-badge status-pending">Pending</span></td>
-              <td>
-                <button class="action-button action-view">View</button>
-                <button class="action-button action-edit">Respond</button>
-              </td>
-            </tr>
-            <tr>
-              <td>Jennifer White</td>
-              <td>How do I delete my account?</td>
-              <td>Apr 1, 2025</td>
-              <td><span class="status-badge status-pending">Pending</span></td>
-              <td>
-                <button class="action-button action-view">View</button>
-                <button class="action-button action-edit">Respond</button>
-              </td>
-            </tr>
-            <tr>
-              <td>Daniel Martin</td>
-              <td>Item damaged during shipping</td>
-              <td>Mar 31, 2025</td>
-              <td><span class="status-badge status-pending">Pending</span></td>
-              <td>
-                <button class="action-button action-view">View</button>
-                <button class="action-button action-edit">Respond</button>
-              </td>
+              <td colspan="5" style="text-align: center;">Loading support requests...</td>
             </tr>
           </tbody>
         </table>
@@ -647,10 +553,258 @@
       document.getElementById('currentDate').textContent = date.toLocaleDateString('en-US', options);
     }
     
-    // Initialize
+    // Fetch Stats from API
+    async function fetchDashboardStats() {
+      try {
+        const response = await fetch('/api/admin/stats');
+        if (!response.ok) {
+          throw new Error('Failed to fetch stats');
+        }
+        
+        const data = await response.json();
+        if (data.success) {
+          // Update stats in the UI
+          document.getElementById('totalRevenue').textContent = '$' + data.stats.totalProfit.toFixed(2);
+          document.getElementById('activeUsers').textContent = data.stats.userCount;
+          document.getElementById('activeListings').textContent = data.stats.activeListingCount;
+          document.getElementById('completedSales').textContent = data.stats.soldCount;
+          
+          // Calculate month-over-month changes (this would ideally come from the API)
+          // For now we'll use placeholder percentages
+          document.getElementById('revenueChange').textContent = '↑ 12.5% from last month';
+          document.getElementById('usersChange').textContent = '↑ 5.2% from last month';
+          document.getElementById('listingsChange').textContent = '↑ 8.7% from last month';
+          document.getElementById('salesChange').textContent = '↑ 15.3% from last month';
+        }
+      } catch (error) {
+        console.error('Error fetching dashboard stats:', error);
+        // Show error message to the user
+        alert('Failed to load dashboard statistics. Please try again later.');
+      }
+    }
+    
+    // Fetch Recent Sales
+    async function fetchRecentSales() {
+      try {
+        const response = await fetch('/api/admin/listings?status=sold&limit=5');
+        if (!response.ok) {
+          throw new Error('Failed to fetch recent sales');
+        }
+        
+        const data = await response.json();
+        if (data.success && data.listings.length > 0) {
+          const salesTableBody = document.querySelector('#recentSales tbody');
+          salesTableBody.innerHTML = ''; // Clear existing rows
+          
+          data.listings.forEach(listing => {
+            const commission = (listing.price * 0.025).toFixed(2); // 2.5% commission
+            const date = new Date(listing.sold_at || listing.updated_at).toLocaleDateString();
+            
+            const row = document.createElement('tr');
+            row.innerHTML = `
+              <td>${listing.title}</td>
+              <td>${listing.users.name}</td>
+              <td>$${listing.price.toFixed(2)}</td>
+              <td>$${commission}</td>
+              <td>${date}</td>
+              <td><span class="status-badge status-completed">Completed</span></td>
+            `;
+            salesTableBody.appendChild(row);
+          });
+        } else {
+          document.querySelector('#recentSales tbody').innerHTML = `
+            <tr>
+              <td colspan="6" style="text-align: center;">No recent sales found</td>
+            </tr>
+          `;
+        }
+      } catch (error) {
+        console.error('Error fetching recent sales:', error);
+        document.querySelector('#recentSales tbody').innerHTML = `
+          <tr>
+            <td colspan="6" style="text-align: center;">Failed to load recent sales</td>
+          </tr>
+        `;
+      }
+    }
+    
+    // Fetch Pending Payouts
+    async function fetchPendingPayouts() {
+      try {
+        const response = await fetch('/api/admin/payouts?status=pending&limit=5');
+        if (!response.ok) {
+          throw new Error('Failed to fetch pending payouts');
+        }
+        
+        const data = await response.json();
+        if (data.success && data.payouts.length > 0) {
+          const payoutsTableBody = document.querySelector('#pendingPayouts tbody');
+          payoutsTableBody.innerHTML = ''; // Clear existing rows
+          
+          data.payouts.forEach(payout => {
+            const requestDate = new Date(payout.created_at).toLocaleDateString();
+            let paymentMethod = 'Unknown';
+            
+            if (payout.zelle_id) {
+              paymentMethod = `Zelle (${payout.zelle_id})`;
+            } else if (payout.paypal_id) {
+              paymentMethod = `PayPal (${payout.paypal_id})`;
+            } else if (payout.venmo_id) {
+              paymentMethod = `Venmo (${payout.venmo_id})`;
+            } else if (payout.cashapp_id) {
+              paymentMethod = `Cash App (${payout.cashapp_id})`;
+            }
+            
+            const row = document.createElement('tr');
+            row.innerHTML = `
+              <td>${payout.users.name}</td>
+              <td>$${payout.amount.toFixed(2)}</td>
+              <td>${payout.items_count || '-'}</td>
+              <td>${requestDate}</td>
+              <td>${paymentMethod}</td>
+              <td>
+                <button class="action-button action-view" data-id="${payout.id}">View</button>
+                <button class="action-button action-edit" data-id="${payout.id}">Process</button>
+              </td>
+            `;
+            payoutsTableBody.appendChild(row);
+          });
+          
+          // Add event listeners for action buttons
+          document.querySelectorAll('#pendingPayouts .action-edit').forEach(button => {
+            button.addEventListener('click', function() {
+              processPayoutHandler(this.getAttribute('data-id'));
+            });
+          });
+        } else {
+          document.querySelector('#pendingPayouts tbody').innerHTML = `
+            <tr>
+              <td colspan="6" style="text-align: center;">No pending payouts found</td>
+            </tr>
+          `;
+        }
+      } catch (error) {
+        console.error('Error fetching pending payouts:', error);
+        document.querySelector('#pendingPayouts tbody').innerHTML = `
+          <tr>
+            <td colspan="6" style="text-align: center;">Failed to load pending payouts</td>
+          </tr>
+        `;
+      }
+    }
+    
+    // Fetch Support Requests
+    async function fetchSupportRequests() {
+      try {
+        const response = await fetch('/api/admin/support-chats?status=pending&limit=5');
+        if (!response.ok) {
+          throw new Error('Failed to fetch support requests');
+        }
+        
+        const data = await response.json();
+        if (data.success && data.chats.length > 0) {
+          const supportTableBody = document.querySelector('#supportRequests tbody');
+          supportTableBody.innerHTML = ''; // Clear existing rows
+          
+          data.chats.forEach(chat => {
+            const requestDate = new Date(chat.created_at).toLocaleDateString();
+            
+            const row = document.createElement('tr');
+            row.innerHTML = `
+              <td>${chat.users.name}</td>
+              <td>${chat.message.substring(0, 50)}${chat.message.length > 50 ? '...' : ''}</td>
+              <td>${requestDate}</td>
+              <td><span class="status-badge status-pending">Pending</span></td>
+              <td>
+                <button class="action-button action-view" data-id="${chat.id}">View</button>
+                <button class="action-button action-edit" data-id="${chat.id}">Respond</button>
+              </td>
+            `;
+            supportTableBody.appendChild(row);
+          });
+          
+          // Add event listeners for action buttons
+          document.querySelectorAll('#supportRequests .action-view').forEach(button => {
+            button.addEventListener('click', function() {
+              window.location.href = `/admin/support.html?id=${this.getAttribute('data-id')}`;
+            });
+          });
+          
+          document.querySelectorAll('#supportRequests .action-edit').forEach(button => {
+            button.addEventListener('click', function() {
+              window.location.href = `/admin/support.html?id=${this.getAttribute('data-id')}&respond=true`;
+            });
+          });
+        } else {
+          document.querySelector('#supportRequests tbody').innerHTML = `
+            <tr>
+              <td colspan="5" style="text-align: center;">No pending support requests found</td>
+            </tr>
+          `;
+        }
+      } catch (error) {
+        console.error('Error fetching support requests:', error);
+        document.querySelector('#supportRequests tbody').innerHTML = `
+          <tr>
+            <td colspan="5" style="text-align: center;">Failed to load support requests</td>
+          </tr>
+        `;
+      }
+    }
+    
+    // Process a payout
+    async function processPayoutHandler(payoutId) {
+      if (!confirm('Are you sure you want to process this payout?')) {
+        return;
+      }
+      
+      try {
+        const response = await fetch(`/api/admin/process-payout/${payoutId}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to process payout');
+        }
+        
+        const data = await response.json();
+        if (data.success) {
+          alert('Payout processed successfully!');
+          // Refresh the pending payouts list
+          fetchPendingPayouts();
+        } else {
+          alert(`Failed to process payout: ${data.message}`);
+        }
+      } catch (error) {
+        console.error('Error processing payout:', error);
+        alert(`Error processing payout: ${error.message}`);
+      }
+    }
+    
+    // Update the initialize function to call these fetch functions
     document.addEventListener('DOMContentLoaded', function() {
       checkAuth();
       displayCurrentDate();
+      
+      // Fetch real data
+      fetchDashboardStats();
+      fetchRecentSales();
+      fetchPendingPayouts();
+      fetchSupportRequests();
+      
+      // Add navigation handlers
+      document.querySelectorAll('.nav-item').forEach(item => {
+        item.addEventListener('click', function(e) {
+          if (this.getAttribute('data-section')) {
+            e.preventDefault();
+            const section = this.getAttribute('data-section');
+            window.location.href = `/admin/${section}.html`;
+          }
+        });
+      });
     });
   </script>
 </body>

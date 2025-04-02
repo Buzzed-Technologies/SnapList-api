@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payouts - SnapList Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/png" href="/static/img/logo.png">
+  <style>
+    :root {
+      --primary-color: #FF6A00;
+      --primary-light: #FFF0E6;
+      --primary-dark: #E56000;
+      --text-primary: #1D1D1D;
+      --text-secondary: #666666;
+      --background-color: #F9F9FB;
+      --card-background: #FFFFFF;
+      --border-color: #E5E5E5;
+      --shadow-color: rgba(0, 0, 0, 0.05);
+      --success-color: #34C759;
+      --warning-color: #FF9500;
+      --danger-color: #FF3B30;
+      --sidebar-width: 240px;
+    }
+    
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --primary-color: #FF6A00;
+        --primary-light: #2C1A0D;
+        --primary-dark: #FF8A3F;
+        --text-primary: #FFFFFF;
+        --text-secondary: #AAAAAA;
+        --background-color: #1A1A1A;
+        --card-background: #222222;
+        --border-color: #333333;
+        --shadow-color: rgba(0, 0, 0, 0.2);
+      }
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Inter', sans-serif;
+    }
+    
+    body {
+      background-color: var(--background-color);
+      color: var(--text-primary);
+      display: flex;
+      min-height: 100vh;
+    }
+    
+    /* Sidebar Styles */
+    .sidebar {
+      width: var(--sidebar-width);
+      background-color: var(--card-background);
+      border-right: 1px solid var(--border-color);
+      padding: 24px 0;
+      height: 100vh;
+      position: fixed;
+      top: 0;
+      left: 0;
+      overflow-y: auto;
+    }
+    
+    .sidebar-header {
+      padding: 0 20px 20px;
+      margin-bottom: 20px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+    }
+    
+    .sidebar-header img {
+      width: 32px;
+      height: 32px;
+      margin-right: 12px;
+    }
+    
+    .sidebar-header h1 {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--primary-color);
+    }
+    
+    .nav-section {
+      margin-bottom: 16px;
+    }
+    
+    .nav-section-title {
+      text-transform: uppercase;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      padding: 8px 20px;
+      margin-bottom: 4px;
+    }
+    
+    .nav-item {
+      display: flex;
+      align-items: center;
+      padding: 10px 20px;
+      color: var(--text-primary);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      border-left: 3px solid transparent;
+      transition: all 0.2s;
+    }
+    
+    .nav-item.active {
+      background-color: var(--primary-light);
+      color: var(--primary-color);
+      border-left-color: var(--primary-color);
+    }
+    
+    .nav-item:hover:not(.active) {
+      background-color: rgba(0, 0, 0, 0.03);
+    }
+    
+    .nav-item-icon {
+      width: 18px;
+      height: 18px;
+      margin-right: 12px;
+      opacity: 0.8;
+    }
+    
+    .sidebar-footer {
+      padding: 16px 20px;
+      border-top: 1px solid var(--border-color);
+      margin-top: auto;
+    }
+    
+    .logout-button {
+      padding: 8px 12px;
+      background-color: var(--background-color);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+    
+    .logout-button:hover {
+      background-color: var(--danger-color);
+      color: white;
+      border-color: var(--danger-color);
+    }
+    
+    /* Main Content Styles */
+    .main-content {
+      flex: 1;
+      margin-left: var(--sidebar-width);
+      padding: 24px;
+    }
+    
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+    
+    .page-title {
+      font-size: 24px;
+      font-weight: 700;
+    }
+    
+    /* Search and Filter Bar */
+    .search-filter-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      background-color: var(--card-background);
+      padding: 16px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px var(--shadow-color);
+    }
+    
+    .search-box {
+      display: flex;
+      align-items: center;
+      background-color: var(--background-color);
+      border-radius: 8px;
+      padding: 0 12px;
+      flex: 1;
+      max-width: 320px;
+      border: 1px solid var(--border-color);
+    }
+    
+    .search-box input {
+      background: transparent;
+      border: none;
+      padding: 10px;
+      font-size: 14px;
+      color: var(--text-primary);
+      width: 100%;
+    }
+    
+    .search-box input:focus {
+      outline: none;
+    }
+    
+    .search-icon {
+      opacity: 0.5;
+      font-size: 16px;
+    }
+    
+    .filter-group {
+      display: flex;
+      gap: 10px;
+    }
+    
+    .filter-dropdown {
+      padding: 8px 12px;
+      background-color: var(--background-color);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      font-size: 14px;
+      color: var(--text-primary);
+    }
+    
+    .filter-dropdown:focus {
+      outline: none;
+      border-color: var(--primary-color);
+    }
+    
+    /* Button Styles */
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+    }
+    
+    .button-primary {
+      background-color: var(--primary-color);
+      color: white;
+    }
+    
+    .button-primary:hover {
+      background-color: var(--primary-dark);
+    }
+    
+    /* Stats Cards */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+    
+    .stat-card {
+      background-color: var(--card-background);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 12px var(--shadow-color);
+    }
+    
+    .stat-title {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+    
+    .stat-value {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    
+    .stat-change {
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+    }
+    
+    .stat-up {
+      color: var(--success-color);
+    }
+    
+    .stat-down {
+      color: var(--danger-color);
+    }
+    
+    /* Table Styles */
+    .section-card {
+      background-color: var(--card-background);
+      border-radius: 12px;
+      box-shadow: 0 4px 12px var(--shadow-color);
+      margin-bottom: 24px;
+      overflow: hidden;
+    }
+    
+    .section-header {
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border-color);
+    }
+    
+    .section-title {
+      font-size: 16px;
+      font-weight: 600;
+    }
+    
+    .section-content {
+      padding: 20px;
+    }
+    
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    
+    .data-table th {
+      text-align: left;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    
+    .data-table td {
+      padding: 12px 20px;
+      font-size: 14px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    
+    .data-table tr:last-child td {
+      border-bottom: none;
+    }
+    
+    .data-table tr:hover td {
+      background-color: var(--primary-light);
+    }
+    
+    /* Status Badges */
+    .status-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+      text-align: center;
+    }
+    
+    .status-pending {
+      background-color: var(--warning-color);
+      color: white;
+    }
+    
+    .status-paid {
+      background-color: var(--success-color);
+      color: white;
+    }
+    
+    .status-failed {
+      background-color: var(--danger-color);
+      color: white;
+    }
+    
+    /* Loading */
+    .loading-indicator {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 200px;
+    }
+    
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid var(--border-color);
+      border-top: 4px solid var(--primary-color);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    /* Pagination */
+    .pagination {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 20px;
+    }
+    
+    .pagination-item {
+      margin: 0 4px;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .pagination-item:hover {
+      background-color: var(--primary-light);
+      color: var(--primary-color);
+    }
+    
+    .pagination-item.active {
+      background-color: var(--primary-color);
+      color: white;
+    }
+    
+    /* Action Buttons */
+    .action-button {
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      margin-right: 6px;
+      border: none;
+      transition: all 0.2s;
+    }
+    
+    .action-edit {
+      background-color: #007AFF;
+      color: white;
+    }
+    
+    .action-delete {
+      background-color: var(--danger-color);
+      color: white;
+    }
+    
+    .action-view {
+      background-color: var(--primary-color);
+      color: white;
+    }
+    
+    .action-process {
+      background-color: var(--success-color);
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <!-- Sidebar Navigation -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <img src="/static/img/logo.png" alt="SnapList Logo">
+      <h1>SnapList Admin</h1>
+    </div>
+    
+    <div class="nav-section">
+      <div class="nav-section-title">Overview</div>
+      <a href="/admin/dashboard.html" class="nav-item">
+        <span class="nav-item-icon">📊</span>
+        Dashboard
+      </a>
+    </div>
+    
+    <div class="nav-section">
+      <div class="nav-section-title">Management</div>
+      <a href="/admin/users.html" class="nav-item" data-section="users">
+        <span class="nav-item-icon">👤</span>
+        Users
+      </a>
+      <a href="/admin/listings.html" class="nav-item" data-section="listings">
+        <span class="nav-item-icon">📦</span>
+        Listings
+      </a>
+      <a href="/admin/payouts.html" class="nav-item active" data-section="payouts">
+        <span class="nav-item-icon">💰</span>
+        Payouts
+      </a>
+    </div>
+    
+    <div class="nav-section">
+      <div class="nav-section-title">Communications</div>
+      <a href="/admin/support.html" class="nav-item" data-section="support">
+        <span class="nav-item-icon">💬</span>
+        Support Chats
+      </a>
+    </div>
+    
+    <div class="nav-section">
+      <div class="nav-section-title">Settings</div>
+      <a href="#" class="nav-item">
+        <span class="nav-item-icon">⚙️</span>
+        Configuration
+      </a>
+    </div>
+    
+    <div class="sidebar-footer">
+      <button id="logoutButton" class="logout-button">Logout</button>
+    </div>
+  </aside>
+  
+  <!-- Main Content Area -->
+  <main class="main-content">
+    <header class="page-header">
+      <h1 class="page-title">Payouts</h1>
+      <div class="date-display" id="currentDate"></div>
+    </header>
+    
+    <!-- Payout Stats -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-title">Pending Payouts</div>
+        <div class="stat-value" id="pendingPayouts">$0</div>
+        <div class="stat-change"><span id="pendingPayoutsCount">0</span> payments awaiting processing</div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-title">Processed This Month</div>
+        <div class="stat-value" id="monthlyPayouts">$0</div>
+        <div class="stat-change"><span id="monthlyPayoutsCount">0</span> payments processed</div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-title">Average Processing Time</div>
+        <div class="stat-value" id="avgProcessingTime">0 days</div>
+        <div class="stat-change" id="processingTimeChange">No change from last month</div>
+      </div>
+    </div>
+    
+    <!-- Search and Filter Bar -->
+    <div class="search-filter-bar">
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="searchInput" placeholder="Search by seller name...">
+      </div>
+      
+      <div class="filter-group">
+        <select class="filter-dropdown" id="statusFilter">
+          <option value="all">All Statuses</option>
+          <option value="pending">Pending</option>
+          <option value="paid">Paid</option>
+          <option value="failed">Failed</option>
+        </select>
+        
+        <select class="filter-dropdown" id="sortFilter">
+          <option value="created_at:desc">Newest First</option>
+          <option value="created_at:asc">Oldest First</option>
+          <option value="amount:desc">Amount (High to Low)</option>
+          <option value="amount:asc">Amount (Low to High)</option>
+        </select>
+      </div>
+      
+      <button id="processAllBtn" class="button button-primary">Process All Pending</button>
+    </div>
+    
+    <!-- Payouts Table -->
+    <div class="section-card">
+      <div class="section-header">
+        <h2 class="section-title">All Payouts</h2>
+      </div>
+      <div class="section-content">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Seller</th>
+              <th>Items Sold</th>
+              <th>Amount</th>
+              <th>Payment Method</th>
+              <th>Date</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="payoutsTableBody">
+            <tr>
+              <td colspan="8">
+                <div class="loading-indicator">
+                  <div class="loading-spinner"></div>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        
+        <!-- Pagination -->
+        <div class="pagination" id="pagination">
+          <!-- Pagination will be dynamically generated -->
+        </div>
+      </div>
+    </div>
+  </main>
+  
+  <script>
+    // Authentication Check
+    function checkAuth() {
+      const isAuthenticated = localStorage.getItem('snaplist_admin_auth');
+      if (!isAuthenticated) {
+        window.location.href = '/admin/login.html';
+      }
+    }
+    
+    // Logout Function
+    document.getElementById('logoutButton').addEventListener('click', function() {
+      localStorage.removeItem('snaplist_admin_auth');
+      window.location.href = '/admin/login.html';
+    });
+    
+    // Display Current Date
+    function displayCurrentDate() {
+      const date = new Date();
+      const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+      document.getElementById('currentDate').textContent = date.toLocaleDateString('en-US', options);
+    }
+    
+    // Payouts Management
+    let currentPage = 1;
+    const pageSize = 10;
+    let totalPayouts = 0;
+    let totalPages = 0;
+    let currentSort = 'created_at:desc';
+    let currentSearch = '';
+    let currentStatus = 'all';
+    
+    // Fetch Payout Stats
+    async function fetchPayoutStats() {
+      try {
+        const response = await fetch('/api/admin/payouts/stats');
+        if (!response.ok) {
+          throw new Error('Failed to fetch payout statistics');
+        }
+        
+        const data = await response.json();
+        if (data.success) {
+          // Format currency
+          const formatCurrency = new Intl.NumberFormat('en-US', { 
+            style: 'currency', 
+            currency: 'USD',
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+          });
+          
+          // Update UI with statistics
+          document.getElementById('pendingPayouts').textContent = formatCurrency.format(data.pendingAmount || 0);
+          document.getElementById('pendingPayoutsCount').textContent = data.pendingCount || 0;
+          
+          document.getElementById('monthlyPayouts').textContent = formatCurrency.format(data.monthlyAmount || 0);
+          document.getElementById('monthlyPayoutsCount').textContent = data.monthlyCount || 0;
+          
+          document.getElementById('avgProcessingTime').textContent = `${data.avgProcessingDays || 0} days`;
+          
+          // Processing time change
+          const processingTimeChange = document.getElementById('processingTimeChange');
+          if (data.processingDaysChange) {
+            const changeValue = data.processingDaysChange;
+            if (changeValue < 0) {
+              processingTimeChange.className = 'stat-change stat-up';
+              processingTimeChange.textContent = `${Math.abs(changeValue)} days faster than last month`;
+            } else if (changeValue > 0) {
+              processingTimeChange.className = 'stat-change stat-down';
+              processingTimeChange.textContent = `${changeValue} days slower than last month`;
+            } else {
+              processingTimeChange.className = 'stat-change';
+              processingTimeChange.textContent = 'Same as last month';
+            }
+          } else {
+            processingTimeChange.textContent = 'No change from last month';
+          }
+        } else {
+          throw new Error(data.message || 'Failed to fetch payout statistics');
+        }
+      } catch (error) {
+        console.error('Error fetching payout stats:', error);
+        // Could display an error notification here
+      }
+    }
+    
+    // Fetch Payouts
+    async function fetchPayouts() {
+      try {
+        const tableBody = document.getElementById('payoutsTableBody');
+        tableBody.innerHTML = `
+          <tr>
+            <td colspan="8">
+              <div class="loading-indicator">
+                <div class="loading-spinner"></div>
+              </div>
+            </td>
+          </tr>
+        `;
+        
+        let url = `/api/admin/payouts?page=${currentPage}&limit=${pageSize}`;
+        
+        // Add sorting
+        if (currentSort) {
+          const [field, direction] = currentSort.split(':');
+          url += `&sort_by=${field}&sort_dir=${direction}`;
+        }
+        
+        // Add search
+        if (currentSearch) {
+          url += `&search=${encodeURIComponent(currentSearch)}`;
+        }
+        
+        // Add status filter
+        if (currentStatus !== 'all') {
+          url += `&status=${currentStatus}`;
+        }
+        
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error('Failed to fetch payouts');
+        }
+        
+        const data = await response.json();
+        if (data.success) {
+          // Calculate total pages
+          totalPayouts = data.count;
+          totalPages = Math.ceil(totalPayouts / pageSize);
+          
+          // Render payouts
+          renderPayouts(data.payouts);
+          
+          // Update pagination
+          renderPagination();
+        } else {
+          throw new Error(data.message || 'Failed to fetch payouts');
+        }
+      } catch (error) {
+        console.error('Error fetching payouts:', error);
+        document.getElementById('payoutsTableBody').innerHTML = `
+          <tr>
+            <td colspan="8" style="text-align: center;">
+              Error loading payouts: ${error.message}. <a href="javascript:fetchPayouts()">Try again</a>
+            </td>
+          </tr>
+        `;
+      }
+    }
+    
+    // Render Payouts
+    function renderPayouts(payouts) {
+      const tableBody = document.getElementById('payoutsTableBody');
+      
+      if (payouts.length === 0) {
+        tableBody.innerHTML = `
+          <tr>
+            <td colspan="8" style="text-align: center;">No payouts found</td>
+          </tr>
+        `;
+        return;
+      }
+      
+      tableBody.innerHTML = '';
+      
+      payouts.forEach(payout => {
+        const row = document.createElement('tr');
+        
+        // Format the date
+        const payoutDate = new Date(payout.created_at).toLocaleDateString();
+        
+        // Format the amount
+        const amount = new Intl.NumberFormat('en-US', { 
+          style: 'currency', 
+          currency: 'USD',
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        }).format(payout.amount);
+        
+        // Determine payment method
+        let paymentMethod = 'Not specified';
+        if (payout.payment_method) {
+          if (payout.payment_method === 'zelle') paymentMethod = `Zelle: ${payout.payment_id || ''}`;
+          else if (payout.payment_method === 'paypal') paymentMethod = `PayPal: ${payout.payment_id || ''}`;
+          else if (payout.payment_method === 'venmo') paymentMethod = `Venmo: ${payout.payment_id || ''}`;
+          else if (payout.payment_method === 'cashapp') paymentMethod = `Cash App: ${payout.payment_id || ''}`;
+          else paymentMethod = payout.payment_method;
+        }
+        
+        // Determine status class
+        let statusClass = '';
+        if (payout.status === 'pending') statusClass = 'status-pending';
+        else if (payout.status === 'paid') statusClass = 'status-paid';
+        else if (payout.status === 'failed') statusClass = 'status-failed';
+        
+        row.innerHTML = `
+          <td>${payout.id}</td>
+          <td>${payout.user_name || 'Unknown'}</td>
+          <td>${payout.items_count || 0}</td>
+          <td>${amount}</td>
+          <td>${paymentMethod}</td>
+          <td>${payoutDate}</td>
+          <td><span class="status-badge ${statusClass}">${payout.status.charAt(0).toUpperCase() + payout.status.slice(1)}</span></td>
+          <td>
+            <button class="action-button action-view" data-id="${payout.id}">View</button>
+            ${payout.status === 'pending' ? `<button class="action-button action-process" data-id="${payout.id}">Process</button>` : ''}
+          </td>
+        `;
+        
+        tableBody.appendChild(row);
+      });
+      
+      // Add event listeners to buttons
+      document.querySelectorAll('.action-view').forEach(button => {
+        button.addEventListener('click', function() {
+          viewPayout(this.getAttribute('data-id'));
+        });
+      });
+      
+      document.querySelectorAll('.action-process').forEach(button => {
+        button.addEventListener('click', function() {
+          processPayout(this.getAttribute('data-id'));
+        });
+      });
+    }
+    
+    // Render Pagination
+    function renderPagination() {
+      const paginationContainer = document.getElementById('pagination');
+      paginationContainer.innerHTML = '';
+      
+      // Only show pagination if we have more than one page
+      if (totalPages <= 1) {
+        return;
+      }
+      
+      // Previous page button
+      const prevButton = document.createElement('div');
+      prevButton.className = `pagination-item ${currentPage === 1 ? 'disabled' : ''}`;
+      prevButton.textContent = '←';
+      prevButton.addEventListener('click', () => {
+        if (currentPage > 1) {
+          currentPage--;
+          fetchPayouts();
+        }
+      });
+      paginationContainer.appendChild(prevButton);
+      
+      // Page numbers
+      let startPage = Math.max(1, currentPage - 2);
+      let endPage = Math.min(totalPages, startPage + 4);
+      
+      // Adjust if we're near the end
+      if (endPage - startPage < 4) {
+        startPage = Math.max(1, endPage - 4);
+      }
+      
+      for (let i = startPage; i <= endPage; i++) {
+        const pageButton = document.createElement('div');
+        pageButton.className = `pagination-item ${i === currentPage ? 'active' : ''}`;
+        pageButton.textContent = i;
+        pageButton.addEventListener('click', () => {
+          currentPage = i;
+          fetchPayouts();
+        });
+        paginationContainer.appendChild(pageButton);
+      }
+      
+      // Next page button
+      const nextButton = document.createElement('div');
+      nextButton.className = `pagination-item ${currentPage === totalPages ? 'disabled' : ''}`;
+      nextButton.textContent = '→';
+      nextButton.addEventListener('click', () => {
+        if (currentPage < totalPages) {
+          currentPage++;
+          fetchPayouts();
+        }
+      });
+      paginationContainer.appendChild(nextButton);
+    }
+    
+    // View Payout
+    function viewPayout(payoutId) {
+      alert('View payout details: ' + payoutId);
+      // In a real implementation, this would navigate to a payout details page
+    }
+    
+    // Process Payout
+    async function processPayout(payoutId) {
+      if (!confirm('Are you sure you want to process this payout?')) {
+        return;
+      }
+      
+      try {
+        const response = await fetch(`/api/admin/payouts/${payoutId}/process`, {
+          method: 'POST'
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to process payout');
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          alert('Payout processed successfully');
+          // Refresh the data
+          fetchPayoutStats();
+          fetchPayouts();
+        } else {
+          throw new Error(data.message || 'Failed to process payout');
+        }
+      } catch (error) {
+        console.error('Error processing payout:', error);
+        alert(`Error processing payout: ${error.message}`);
+      }
+    }
+    
+    // Process All Pending Payouts
+    async function processAllPendingPayouts() {
+      if (!confirm('Are you sure you want to process all pending payouts?')) {
+        return;
+      }
+      
+      try {
+        const response = await fetch('/api/admin/payouts/process-all', {
+          method: 'POST'
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to process all payouts');
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          alert(`Successfully processed ${data.processed_count} payouts`);
+          // Refresh the data
+          fetchPayoutStats();
+          fetchPayouts();
+        } else {
+          throw new Error(data.message || 'Failed to process all payouts');
+        }
+      } catch (error) {
+        console.error('Error processing all payouts:', error);
+        alert(`Error processing all payouts: ${error.message}`);
+      }
+    }
+    
+    // Event listeners for search and filter
+    document.getElementById('searchInput').addEventListener('input', function(e) {
+      currentSearch = e.target.value.trim();
+      currentPage = 1; // Reset to first page
+      fetchPayouts();
+    });
+    
+    document.getElementById('sortFilter').addEventListener('change', function(e) {
+      currentSort = e.target.value;
+      currentPage = 1; // Reset to first page
+      fetchPayouts();
+    });
+    
+    document.getElementById('statusFilter').addEventListener('change', function(e) {
+      currentStatus = e.target.value;
+      currentPage = 1; // Reset to first page
+      fetchPayouts();
+    });
+    
+    // Process All Button
+    document.getElementById('processAllBtn').addEventListener('click', processAllPendingPayouts);
+    
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function() {
+      checkAuth();
+      displayCurrentDate();
+      fetchPayoutStats();
+      fetchPayouts();
+    });
+  </script>
+</body>
+</html> 
