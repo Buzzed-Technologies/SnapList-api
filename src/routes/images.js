@@ -232,4 +232,57 @@ router.delete('/:filename', async (req, res) => {
   }
 });
 
+/**
+ * @route POST /api/images/:id/reanalyze
+ * @desc Analyze an image with user-provided context and generate updated listing details
+ * @access Public
+ */
+router.post('/:id/reanalyze', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { context } = req.body;
+    
+    if (!id) {
+      return res.status(400).json({ success: false, message: 'Image ID is required' });
+    }
+    
+    if (!context || Object.keys(context).length === 0) {
+      return res.status(400).json({ success: false, message: 'Context data is required' });
+    }
+    
+    // Get the image URL from storage
+    const { data: publicUrl } = supabase.storage
+      .from(BUCKET_NAME)
+      .getPublicUrl(`uploads/${id}`);
+    
+    if (!publicUrl || !publicUrl.publicUrl) {
+      return res.status(404).json({ success: false, message: 'Image not found' });
+    }
+    
+    // Download image from URL to temp file
+    const response = await fetch(publicUrl.publicUrl);
+    if (!response.ok) {
+      return res.status(404).json({ success: false, message: 'Failed to download image' });
+    }
+    
+    const imageBuffer = await response.arrayBuffer();
+    const tempFilePath = path.join(tempDir, `temp-${uuidv4()}${path.extname(id)}`);
+    fs.writeFileSync(tempFilePath, Buffer.from(imageBuffer));
+    
+    // Generate listing details from the image with context
+    const listingDetails = await imageProcessingService.generateListingDetailsWithContext(tempFilePath, context);
+    
+    // Delete temporary file
+    fs.unlinkSync(tempFilePath);
+    
+    res.status(200).json({
+      success: true,
+      listingDetails
+    });
+  } catch (error) {
+    console.error('Error analyzing image with context:', error);
+    res.status(500).json({ success: false, message: `Image analysis failed: ${error.message}` });
+  }
+});
+
 module.exports = router; 

@@ -233,6 +233,100 @@ async function generateListingDetails(imagePath) {
 }
 
 /**
+ * Analyze image and generate listing details with user-provided context
+ * @param {string} imagePath - Path to the image
+ * @param {Object} context - User-provided context for analysis
+ * @returns {Promise<Object>} - Generated listing details
+ */
+async function generateListingDetailsWithContext(imagePath, context) {
+  try {
+    // Read image as base64
+    const imageBuffer = fs.readFileSync(imagePath);
+    const base64Image = imageBuffer.toString('base64');
+    
+    // Create a prompt that includes the user-provided context
+    let contextStr = "Consider the following user-provided details when analyzing this image:\n";
+    
+    // Add each piece of context
+    if (context.condition) {
+      contextStr += `- Condition: ${context.condition}\n`;
+    }
+    if (context.title) {
+      contextStr += `- Title/Product Name: ${context.title}\n`;
+    }
+    if (context.brand) {
+      contextStr += `- Brand: ${context.brand}\n`;
+    }
+    if (context.category) {
+      contextStr += `- Category: ${context.category}\n`;
+    }
+    if (context.size) {
+      contextStr += `- Size: ${context.size}\n`;
+    }
+    if (context.color) {
+      contextStr += `- Color: ${context.color}\n`;
+    }
+    
+    // Call OpenAI API for listing generation with the enhanced prompt and context
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: `You are an expert marketplace seller helping to create a compelling listing that will attract buyers on platforms like eBay and Facebook Marketplace. Analyze this image carefully and generate a professional marketplace listing.
+
+${contextStr}
+
+Based on the image AND the user-provided context, please include:
+1. A concise, SEO-friendly title that includes key product details (30-80 characters)
+2. A detailed, well-structured description highlighting features, condition, measurements, and selling points (100-200 words)
+3. A fair market price in USD (be specific with the exact dollar amount)
+4. The most appropriate category for the item
+5. Brand name (if identifiable)
+6. Size information (if applicable)
+7. Primary color and any secondary colors
+
+IMPORTANT: If the user has specified condition as "poor" or similar negative condition, make sure to adjust the price and description accordingly to reflect the worn or damaged state.
+
+Format your response as a valid JSON object with these fields: title, description, price (as a string with dollar sign), category, brand, size, and color.`
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: `data:image/jpeg;base64,${base64Image}`
+              }
+            }
+          ]
+        }
+      ],
+      max_tokens: 1500,
+      response_format: { type: "json_object" }
+    });
+    
+    // Parse the response to get listing details
+    const content = response.choices[0].message.content;
+    const listingDetails = JSON.parse(content);
+    
+    return {
+      title: listingDetails.title,
+      description: listingDetails.description,
+      price: parseFloat(listingDetails.price.replace(/[^0-9.]/g, '')), // Extract numeric price
+      original_price: parseFloat(listingDetails.price.replace(/[^0-9.]/g, '')),
+      category: listingDetails.category || null,
+      brand: listingDetails.brand || null,
+      size: listingDetails.size || null,
+      color: listingDetails.color || null
+    };
+  } catch (error) {
+    console.error('Error generating listing details with context:', error);
+    throw new Error(`Failed to generate listing details with context: ${error.message}`);
+  }
+}
+
+/**
  * Compress and optimize images for storage
  * @param {string} imagePath - Path to the original image
  * @returns {Promise<string>} - Public URL of the optimized image
@@ -266,5 +360,6 @@ module.exports = {
   processImage,
   detectObjectsInImage,
   generateListingDetails,
+  generateListingDetailsWithContext,
   optimizeImage
 }; 
