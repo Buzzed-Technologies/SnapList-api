@@ -55,7 +55,10 @@ async function createEbayListing(listing, imageUrls) {
             ShippingServiceCost: 10.00
           }
         },
-        Site: 'US'
+        Site: 'US',
+        Duration: 'Days_30', // Ensure Duration is properly set
+        Country: 'US', // Ensure Country is at the correct level
+        Currency: 'USD' // Ensure Currency is at the correct level
       }
     };
     
@@ -71,6 +74,7 @@ async function createEbayListing(listing, imageUrls) {
         'X-EBAY-API-DEV-NAME': ebayConfig.devId,
         'X-EBAY-API-CERT-NAME': ebayConfig.certId,
         'X-EBAY-API-IAF-TOKEN': ebayConfig.authToken,
+        'X-EBAY-API-DETAIL-LEVEL': '0',
         'Content-Type': 'application/xml'
       },
       data: generateEbayXml(ebayListing)
@@ -280,7 +284,7 @@ function generateEbayXml(data) {
     return xml;
   };
   
-  return `<?xml version="1.0" encoding="utf-8"?><request>${generateXmlFromObject(data)}</request>`;
+  return `<?xml version="1.0" encoding="utf-8"?><AddItemRequest xmlns="urn:ebay:apis:eBLBaseComponents">${generateXmlFromObject(data)}</AddItemRequest>`;
 }
 
 /**
