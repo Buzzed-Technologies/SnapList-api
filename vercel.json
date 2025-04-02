@@ -14,6 +14,14 @@
     {
       "src": "/uploads/(.*)",
       "dest": "src/index.js"
+    },
+    {
+      "src": "/share/(.*)",
+      "dest": "src/index.js"
+    },
+    {
+      "src": "/static/(.*)",
+      "dest": "src/index.js"
     }
   ],
   "env": {
