@@ -1,6 +1,7 @@
 const express = require('express');
 const userUtils = require('../utils/userUtils');
 const notificationService = require('../services/notificationService');
+const openai = require('../config/openai');
 
 const router = express.Router();
 
@@ -168,6 +169,66 @@ router.post('/:id/notifications/read', async (req, res) => {
   } catch (error) {
     console.error(`Error in POST /users/${req.params.id}/notifications/read:`, error);
     res.status(500).json({ success: false, message: `Failed to mark notifications as read: ${error.message}` });
+  }
+});
+
+/**
+ * @route POST /api/users/:id/chat/support
+ * @desc Process a support chat message and get AI response
+ * @access Public
+ */
+router.post('/:id/chat/support', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { message } = req.body;
+    
+    if (!message) {
+      return res.status(400).json({ success: false, message: 'Message is required' });
+    }
+    
+    // Get the user to provide context
+    const userResult = await userUtils.getUserById(id);
+    
+    if (!userResult.success) {
+      return res.status(404).json({ success: false, message: userResult.message });
+    }
+    
+    // Process the message with OpenAI
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content: `You are a helpful support assistant for SnapList, an app that helps people list items for sale on marketplaces like eBay and Facebook Marketplace.
+          
+The app allows users to:
+- Take photos of items they want to sell
+- Get AI-generated listings with titles, descriptions and pricing
+- Manage their listings and track profits
+- Get notifications when items sell
+- Process payouts to their accounts
+
+If you cannot answer a user's question or they have a specific issue that requires human attention, provide the support email: buzedapp@gmail.com.
+
+Keep responses concise, helpful, and focused on helping the user understand how to use the app.`
+        },
+        {
+          role: "user",
+          content: message
+        }
+      ],
+      max_tokens: 500
+    });
+    
+    const aiResponse = response.choices[0].message.content;
+    
+    res.status(200).json({
+      success: true,
+      response: aiResponse
+    });
+  } catch (error) {
+    console.error(`Error in POST /users/${req.params.id}/chat/support:`, error);
+    res.status(500).json({ success: false, message: `Failed to process support chat: ${error.message}` });
   }
 });
 
