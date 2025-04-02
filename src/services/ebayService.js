@@ -10,10 +10,17 @@ const { supabase } = require('../config/supabase');
  */
 async function createEbayListing(listing, imageUrls) {
   try {
-    if (!ebayConfig.appId || !ebayConfig.authToken) {
-      console.warn('eBay credentials not configured, skipping eBay listing');
-      return { success: false, message: 'eBay API not configured' };
+    // Enhanced validation to ensure all required credentials are present
+    if (!ebayConfig.appId || !ebayConfig.certId || !ebayConfig.devId || !ebayConfig.authToken) {
+      console.warn('eBay credentials not fully configured, skipping eBay listing');
+      return { success: false, message: 'eBay API credentials not fully configured' };
     }
+    
+    // Log which credentials are missing for debugging purposes
+    if (!ebayConfig.appId) console.warn('Missing EBAY_APP_ID in environment variables');
+    if (!ebayConfig.certId) console.warn('Missing EBAY_CERT_ID in environment variables');
+    if (!ebayConfig.devId) console.warn('Missing EBAY_DEV_ID in environment variables');
+    if (!ebayConfig.authToken) console.warn('Missing EBAY_AUTH_TOKEN in environment variables');
     
     // In a real implementation, this would use the eBay Trading API or Inventory API
     // For demonstration purposes, we're using a simplified approach
@@ -81,10 +88,12 @@ async function createEbayListing(listing, imageUrls) {
         'X-EBAY-API-SITEID': '0',
         'X-EBAY-API-COMPATIBILITY-LEVEL': '967',
         'X-EBAY-API-CALL-NAME': 'AddItem',
-        'X-EBAY-API-APP-NAME': ebayConfig.appId,
-        'X-EBAY-API-DEV-NAME': ebayConfig.devId,
-        'X-EBAY-API-CERT-NAME': ebayConfig.certId,
-        'Authorization': `Bearer ${ebayConfig.authToken}`,
+        // Ensure we have an actual App ID, not a default or fallback value
+        'X-EBAY-API-APP-NAME': ebayConfig.appId || '',
+        'X-EBAY-API-DEV-NAME': ebayConfig.devId || '',
+        'X-EBAY-API-CERT-NAME': ebayConfig.certId || '',
+        // For the Trading API, use the IAF token header without Bearer prefix
+        'X-EBAY-API-IAF-TOKEN': ebayConfig.authToken || '',
         'X-EBAY-API-DETAIL-LEVEL': '0',
         'Content-Type': 'application/xml'
       },
@@ -127,9 +136,9 @@ async function createEbayListing(listing, imageUrls) {
  */
 async function updateEbayListing(ebayItemId, updateData) {
   try {
-    if (!ebayConfig.appId || !ebayConfig.authToken) {
-      console.warn('eBay credentials not configured, skipping eBay listing update');
-      return { success: false, message: 'eBay API not configured' };
+    if (!ebayConfig.appId || !ebayConfig.certId || !ebayConfig.devId || !ebayConfig.authToken) {
+      console.warn('eBay credentials not fully configured, skipping eBay listing update');
+      return { success: false, message: 'eBay API credentials not fully configured' };
     }
     
     // In a real implementation, this would use the eBay Trading API
@@ -153,10 +162,10 @@ async function updateEbayListing(ebayItemId, updateData) {
         'X-EBAY-API-SITEID': '0',
         'X-EBAY-API-COMPATIBILITY-LEVEL': '967',
         'X-EBAY-API-CALL-NAME': 'ReviseItem',
-        'X-EBAY-API-APP-NAME': ebayConfig.appId,
-        'X-EBAY-API-DEV-NAME': ebayConfig.devId,
-        'X-EBAY-API-CERT-NAME': ebayConfig.certId,
-        'Authorization': `Bearer ${ebayConfig.authToken}`,
+        'X-EBAY-API-APP-NAME': ebayConfig.appId || '',
+        'X-EBAY-API-DEV-NAME': ebayConfig.devId || '',
+        'X-EBAY-API-CERT-NAME': ebayConfig.certId || '',
+        'X-EBAY-API-IAF-TOKEN': ebayConfig.authToken || '',
         'X-EBAY-API-DETAIL-LEVEL': '0',
         'Content-Type': 'application/xml'
       },
@@ -183,9 +192,9 @@ async function updateEbayListing(ebayItemId, updateData) {
  */
 async function endEbayListing(ebayItemId) {
   try {
-    if (!ebayConfig.appId || !ebayConfig.authToken) {
-      console.warn('eBay credentials not configured, skipping eBay listing end');
-      return { success: false, message: 'eBay API not configured' };
+    if (!ebayConfig.appId || !ebayConfig.certId || !ebayConfig.devId || !ebayConfig.authToken) {
+      console.warn('eBay credentials not fully configured, skipping eBay listing end');
+      return { success: false, message: 'eBay API credentials not fully configured' };
     }
     
     // In a real implementation, this would use the eBay Trading API
@@ -207,10 +216,10 @@ async function endEbayListing(ebayItemId) {
         'X-EBAY-API-SITEID': '0',
         'X-EBAY-API-COMPATIBILITY-LEVEL': '967',
         'X-EBAY-API-CALL-NAME': 'EndItem',
-        'X-EBAY-API-APP-NAME': ebayConfig.appId,
-        'X-EBAY-API-DEV-NAME': ebayConfig.devId,
-        'X-EBAY-API-CERT-NAME': ebayConfig.certId,
-        'Authorization': `Bearer ${ebayConfig.authToken}`,
+        'X-EBAY-API-APP-NAME': ebayConfig.appId || '',
+        'X-EBAY-API-DEV-NAME': ebayConfig.devId || '',
+        'X-EBAY-API-CERT-NAME': ebayConfig.certId || '',
+        'X-EBAY-API-IAF-TOKEN': ebayConfig.authToken || '',
         'X-EBAY-API-DETAIL-LEVEL': '0',
         'Content-Type': 'application/xml'
       },
@@ -237,9 +246,9 @@ async function endEbayListing(ebayItemId) {
  */
 async function checkEbayListingSold(ebayItemId) {
   try {
-    if (!ebayConfig.appId || !ebayConfig.authToken) {
-      console.warn('eBay credentials not configured, skipping eBay listing check');
-      return { success: false, message: 'eBay API not configured' };
+    if (!ebayConfig.appId || !ebayConfig.certId || !ebayConfig.devId || !ebayConfig.authToken) {
+      console.warn('eBay credentials not fully configured, skipping eBay listing check');
+      return { success: false, message: 'eBay API credentials not fully configured' };
     }
     
     // In a real implementation, this would use the eBay Trading API
@@ -255,10 +264,10 @@ async function checkEbayListingSold(ebayItemId) {
         'X-EBAY-API-SITEID': '0',
         'X-EBAY-API-COMPATIBILITY-LEVEL': '967',
         'X-EBAY-API-CALL-NAME': 'GetItem',
-        'X-EBAY-API-APP-NAME': ebayConfig.appId,
-        'X-EBAY-API-DEV-NAME': ebayConfig.devId,
-        'X-EBAY-API-CERT-NAME': ebayConfig.certId,
-        'Authorization': `Bearer ${ebayConfig.authToken}`,
+        'X-EBAY-API-APP-NAME': ebayConfig.appId || '',
+        'X-EBAY-API-DEV-NAME': ebayConfig.devId || '',
+        'X-EBAY-API-CERT-NAME': ebayConfig.certId || '',
+        'X-EBAY-API-IAF-TOKEN': ebayConfig.authToken || '',
         'X-EBAY-API-DETAIL-LEVEL': '0',
         'Content-Type': 'application/xml'
       },
