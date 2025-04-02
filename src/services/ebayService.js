@@ -39,7 +39,11 @@ async function createEbayListing(listing, imageUrls) {
         PaymentMethods: ['PayPal'],
         PayPalEmailAddress: 'seller@example.com',
         PictureDetails: {
-          PictureURL: imageUrls.slice(0, 12) // eBay allows up to 12 images
+          // eBay requires images to be hosted on a public server with https URLs
+          // Remove any local or non-https URLs
+          PictureURL: imageUrls
+            .filter(url => url && url.startsWith('https://'))
+            .slice(0, 12) // eBay allows up to 12 images
         },
         ReturnPolicy: {
           ReturnsAcceptedOption: 'ReturnsAccepted',
@@ -62,6 +66,13 @@ async function createEbayListing(listing, imageUrls) {
       }
     };
     
+    // Check if we have valid pictures before proceeding
+    if (!ebayListing.Item.PictureDetails.PictureURL || ebayListing.Item.PictureDetails.PictureURL.length === 0) {
+      console.warn('No valid image URLs for eBay listing, skipping PictureDetails');
+      // Remove the PictureDetails entirely if no valid URLs
+      delete ebayListing.Item.PictureDetails;
+    }
+    
     // Make the API request to eBay
     const response = await axios({
       method: 'post',
@@ -83,9 +94,18 @@ async function createEbayListing(listing, imageUrls) {
     // Parse the response
     const ebayItemId = extractEbayItemId(response.data);
     
+    // Check if the response indicates failure
+    if (response.data.includes('<Ack>Failure</Ack>')) {
+      // Extract error messages from the response
+      const errorMatch = response.data.match(/<LongMessage>([^<]+)<\/LongMessage>/);
+      const errorMessage = errorMatch ? errorMatch[1] : 'Unknown eBay API error';
+      console.error('eBay API Error:', errorMessage);
+      return { success: false, message: `eBay listing creation failed: ${errorMessage}` };
+    }
+    
     if (!ebayItemId) {
       console.error('Failed to extract eBay item ID from response');
-      return { success: false, message: 'Failed to create eBay listing' };
+      return { success: false, message: 'Failed to create eBay listing - no item ID returned' };
     }
     
     return {
