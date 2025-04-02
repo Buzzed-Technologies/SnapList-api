@@ -88,12 +88,14 @@ async function createEbayListing(listing, imageUrls) {
         'X-EBAY-API-SITEID': '0',
         'X-EBAY-API-COMPATIBILITY-LEVEL': '967',
         'X-EBAY-API-CALL-NAME': 'AddItem',
-        // Ensure we have an actual App ID, not a default or fallback value
+        // Ensure we have actual values for the required headers
         'X-EBAY-API-APP-NAME': ebayConfig.appId || '',
         'X-EBAY-API-DEV-NAME': ebayConfig.devId || '',
         'X-EBAY-API-CERT-NAME': ebayConfig.certId || '',
-        // For the Trading API, use the IAF token header without Bearer prefix
-        'X-EBAY-API-IAF-TOKEN': ebayConfig.authToken || '',
+        // IMPORTANT: The Trading API requires a User Auth Token, not an OAuth token
+        // If the authToken starts with "Bearer", remove it as it's for REST APIs, not Trading API
+        'X-EBAY-API-IAF-TOKEN': ebayConfig.authToken ? 
+          (ebayConfig.authToken.startsWith('Bearer ') ? ebayConfig.authToken.substring(7) : ebayConfig.authToken) : '',
         'X-EBAY-API-DETAIL-LEVEL': '0',
         'Content-Type': 'application/xml'
       },
@@ -165,7 +167,8 @@ async function updateEbayListing(ebayItemId, updateData) {
         'X-EBAY-API-APP-NAME': ebayConfig.appId || '',
         'X-EBAY-API-DEV-NAME': ebayConfig.devId || '',
         'X-EBAY-API-CERT-NAME': ebayConfig.certId || '',
-        'X-EBAY-API-IAF-TOKEN': ebayConfig.authToken || '',
+        'X-EBAY-API-IAF-TOKEN': ebayConfig.authToken ? 
+          (ebayConfig.authToken.startsWith('Bearer ') ? ebayConfig.authToken.substring(7) : ebayConfig.authToken) : '',
         'X-EBAY-API-DETAIL-LEVEL': '0',
         'Content-Type': 'application/xml'
       },
@@ -219,7 +222,8 @@ async function endEbayListing(ebayItemId) {
         'X-EBAY-API-APP-NAME': ebayConfig.appId || '',
         'X-EBAY-API-DEV-NAME': ebayConfig.devId || '',
         'X-EBAY-API-CERT-NAME': ebayConfig.certId || '',
-        'X-EBAY-API-IAF-TOKEN': ebayConfig.authToken || '',
+        'X-EBAY-API-IAF-TOKEN': ebayConfig.authToken ? 
+          (ebayConfig.authToken.startsWith('Bearer ') ? ebayConfig.authToken.substring(7) : ebayConfig.authToken) : '',
         'X-EBAY-API-DETAIL-LEVEL': '0',
         'Content-Type': 'application/xml'
       },
@@ -267,7 +271,8 @@ async function checkEbayListingSold(ebayItemId) {
         'X-EBAY-API-APP-NAME': ebayConfig.appId || '',
         'X-EBAY-API-DEV-NAME': ebayConfig.devId || '',
         'X-EBAY-API-CERT-NAME': ebayConfig.certId || '',
-        'X-EBAY-API-IAF-TOKEN': ebayConfig.authToken || '',
+        'X-EBAY-API-IAF-TOKEN': ebayConfig.authToken ? 
+          (ebayConfig.authToken.startsWith('Bearer ') ? ebayConfig.authToken.substring(7) : ebayConfig.authToken) : '',
         'X-EBAY-API-DETAIL-LEVEL': '0',
         'Content-Type': 'application/xml'
       },
