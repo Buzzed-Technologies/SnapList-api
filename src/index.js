@@ -13,6 +13,7 @@ const profitsRoutes = require('./routes/profits');
 const imagesRoutes = require('./routes/images');
 const payoutsRoutes = require('./routes/payouts');
 const shareRoutes = require('./routes/share');
+const adminRoutes = require('./routes/admin');
 
 // Import price reduction service
 const { schedulePriceReductions } = require('./services/priceService');
@@ -92,6 +93,14 @@ app.get('/privacy', (req, res) => {
   }
 });
 
+// Admin authentication middleware
+function adminAuthCheck(req, res, next) {
+  // In a production environment, you'd implement proper session-based auth
+  // For this simple implementation, we'll trust the client-side auth
+  // and focus on serving the pages
+  next();
+}
+
 // Routes
 app.use('/api/users', usersRoutes);
 app.use('/api/listings', listingsRoutes);
@@ -99,6 +108,42 @@ app.use('/api/profits', profitsRoutes);
 app.use('/api/images', imagesRoutes);
 app.use('/api/payouts', payoutsRoutes);
 app.use('/share', shareRoutes);
+app.use('/api/admin', adminAuthCheck, adminRoutes);
+
+// Admin pages routes
+app.get('/admin', (req, res) => {
+  res.redirect('/admin/login.html');
+});
+
+app.get('/admin/login.html', (req, res) => {
+  try {
+    const htmlPath = path.join(publicPath, 'admin/login.html');
+    if (fs.existsSync(htmlPath)) {
+      res.sendFile(htmlPath);
+    } else {
+      console.error('Admin login page not found at path:', htmlPath);
+      res.status(404).send('Admin login page not found');
+    }
+  } catch (error) {
+    console.error('Error serving admin login page:', error);
+    res.status(500).send('Error loading admin login page');
+  }
+});
+
+app.get('/admin/dashboard.html', (req, res) => {
+  try {
+    const htmlPath = path.join(publicPath, 'admin/dashboard.html');
+    if (fs.existsSync(htmlPath)) {
+      res.sendFile(htmlPath);
+    } else {
+      console.error('Admin dashboard page not found at path:', htmlPath);
+      res.status(404).send('Admin dashboard page not found');
+    }
+  } catch (error) {
+    console.error('Error serving admin dashboard page:', error);
+    res.status(500).send('Error loading admin dashboard page');
+  }
+});
 
 // Health check route
 app.get('/api/health', (req, res) => {

@@ -2,6 +2,7 @@ const express = require('express');
 const userUtils = require('../utils/userUtils');
 const notificationService = require('../services/notificationService');
 const openai = require('../config/openai');
+const { supabase } = require('../config/supabase');
 
 const router = express.Router();
 
@@ -239,7 +240,7 @@ Frequently Asked Questions:
    - Our AI automatically suggests an optimal price for your item based on market data. We'll gradually reduce the price if needed until it sells or reaches your minimum price.
 
 5. How do I update my payment information?
-   - When requesting a payout you can update your Zelle, Cash App, PayPal, or Venmo information.
+   - Go to your profile page and tap the payment method to update your Zelle, Cash App, PayPal, or Venmo information.
 
 6. Is there a limit to how many items I can list?
    - There is no limit to the number of items you can list with SnapList.
@@ -251,10 +252,10 @@ Frequently Asked Questions:
    - SnapList charges a 2.5% commission on successful sales.
 
 9. Can I edit my listing after posting?
-   - No, once posted its posted you can only delete it item and relist.
+   - Yes, you can edit your listing details by selecting the listing and tapping the edit button.
 
 10. What types of items sell best on SnapList?
-    - Anything that is in good condition and is in demand.
+    - Clothing, electronics, home goods, and collectibles typically sell well on our platform.
 
 If you cannot answer a user's question or they have a specific issue that requires human attention, provide the support email: buzedapp@gmail.com.
 
@@ -270,9 +271,26 @@ Keep responses concise, helpful, and focused on helping the user understand how 
     
     const aiResponse = response.choices[0].message.content;
     
+    // Store the support chat in the database
+    const { data: chatData, error: chatError } = await supabase
+      .from('support_chats')
+      .insert({
+        user_id: id,
+        message,
+        ai_response: aiResponse,
+        status: 'pending' // Admins will need to review and potentially respond
+      })
+      .select();
+      
+    if (chatError) {
+      console.error('Error storing support chat:', chatError);
+      // Continue anyway to return the AI response to the user
+    }
+    
     res.status(200).json({
       success: true,
-      response: aiResponse
+      response: aiResponse,
+      chatId: chatData && chatData.length > 0 ? chatData[0].id : null
     });
   } catch (error) {
     console.error(`Error in POST /users/${req.params.id}/chat/support:`, error);

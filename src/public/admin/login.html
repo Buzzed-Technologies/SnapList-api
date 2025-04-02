@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SnapList Admin Login</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/png" href="/static/img/logo.png">
+  <style>
+    :root {
+      --primary-color: #FF6A00;
+      --primary-light: #FFF0E6;
+      --text-primary: #1D1D1D;
+      --text-secondary: #666666;
+      --background-color: #F9F9FB;
+      --card-background: #FFFFFF;
+      --border-color: #E5E5E5;
+      --shadow-color: rgba(0, 0, 0, 0.05);
+    }
+    
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --primary-color: #FF6A00;
+        --primary-light: #2C1A0D;
+        --text-primary: #FFFFFF;
+        --text-secondary: #AAAAAA;
+        --background-color: #1A1A1A;
+        --card-background: #222222;
+        --border-color: #333333;
+        --shadow-color: rgba(0, 0, 0, 0.2);
+      }
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Inter', sans-serif;
+    }
+    
+    body {
+      background-color: var(--background-color);
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    
+    .login-container {
+      width: 100%;
+      max-width: 420px;
+      padding: 40px;
+      background-color: var(--card-background);
+      border-radius: 16px;
+      box-shadow: 0 8px 24px var(--shadow-color);
+    }
+    
+    .login-header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    
+    .login-header img {
+      width: 80px;
+      height: 80px;
+      margin-bottom: 16px;
+    }
+    
+    .login-header h1 {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--primary-color);
+      margin-bottom: 8px;
+    }
+    
+    .login-header p {
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+    
+    .form-group {
+      margin-bottom: 24px;
+    }
+    
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+    
+    .form-group input {
+      width: 100%;
+      padding: 12px 16px;
+      background-color: var(--background-color);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      font-size: 16px;
+      color: var(--text-primary);
+      transition: all 0.2s;
+    }
+    
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 2px var(--primary-light);
+    }
+    
+    .login-button {
+      width: 100%;
+      padding: 14px;
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .login-button:hover {
+      background-color: #E56000;
+    }
+    
+    .login-button:active {
+      transform: scale(0.98);
+    }
+    
+    .error-message {
+      color: #FF3B30;
+      font-size: 14px;
+      margin-top: 16px;
+      text-align: center;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="login-header">
+      <img src="/static/img/logo.png" alt="SnapList Logo">
+      <h1>SnapList Admin</h1>
+      <p>Secure login for platform administrators</p>
+    </div>
+    
+    <form id="loginForm">
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" required>
+      </div>
+      
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required>
+      </div>
+      
+      <button type="submit" class="login-button">Login</button>
+      
+      <div id="errorMessage" class="error-message">
+        Invalid email or password
+      </div>
+    </form>
+  </div>
+  
+  <script>
+    document.getElementById('loginForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      
+      // Simple client-side authentication - in production, use a secure server-side auth
+      if (email === 'admin@snaplist.com' && password === 'fuckmyass124') {
+        // Set session
+        localStorage.setItem('snaplist_admin_auth', 'true');
+        // Redirect to dashboard
+        window.location.href = '/admin/dashboard.html';
+      } else {
+        document.getElementById('errorMessage').style.display = 'block';
+      }
+    });
+  </script>
+</body>
+</html> 
