@@ -57,6 +57,41 @@ app.get('/share/listing/html', (req, res) => {
   }
 });
 
+// Add routes for terms of service and privacy policy
+app.get('/terms', (req, res) => {
+  try {
+    const htmlPath = path.join(publicPath, 'terms.html');
+    console.log('Serving Terms of Service from:', htmlPath);
+    
+    if (fs.existsSync(htmlPath)) {
+      res.sendFile(htmlPath);
+    } else {
+      console.error('Terms of Service file not found at path:', htmlPath);
+      res.status(404).send('Terms of Service page not found');
+    }
+  } catch (error) {
+    console.error('Error serving Terms of Service HTML:', error);
+    res.status(500).send('Error loading Terms of Service page');
+  }
+});
+
+app.get('/privacy', (req, res) => {
+  try {
+    const htmlPath = path.join(publicPath, 'privacy.html');
+    console.log('Serving Privacy Policy from:', htmlPath);
+    
+    if (fs.existsSync(htmlPath)) {
+      res.sendFile(htmlPath);
+    } else {
+      console.error('Privacy Policy file not found at path:', htmlPath);
+      res.status(404).send('Privacy Policy page not found');
+    }
+  } catch (error) {
+    console.error('Error serving Privacy Policy HTML:', error);
+    res.status(500).send('Error loading Privacy Policy page');
+  }
+});
+
 // Routes
 app.use('/api/users', usersRoutes);
 app.use('/api/listings', listingsRoutes);

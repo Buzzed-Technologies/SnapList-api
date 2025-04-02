@@ -16,6 +16,14 @@
       "dest": "src/public/$1"
     },
     {
+      "src": "/terms",
+      "dest": "src/index.js"
+    },
+    {
+      "src": "/privacy",
+      "dest": "src/index.js"
+    },
+    {
       "src": "/api/(.*)",
       "dest": "src/index.js"
     },
