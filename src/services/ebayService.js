@@ -56,6 +56,23 @@ async function createEbayListing(listing, imageUrls) {
         DispatchTimeMax: 3, // 3 days handling time
         ListingDuration: 'GTC', // Good 'Til Cancelled - required for fixed price listings
         ListingType: 'FixedPriceItem',
+        // Add required item specifics for the category
+        ItemSpecifics: {
+          NameValueList: [
+            {
+              Name: 'Brand',
+              Value: listing.brand || 'Unbranded' // Use the listing's brand or default to Unbranded
+            },
+            {
+              Name: 'Model',
+              Value: listing.model || 'Generic'
+            },
+            {
+              Name: 'Type',
+              Value: listing.type || 'Basic Tee'
+            }
+          ]
+        },
         // Remove PayPal as it's not supported with managed payments
         // PaymentMethods: ['PayPal'],
         // PayPalEmailAddress: 'seller@example.com',
