@@ -113,7 +113,8 @@ router.post('/', async (req, res) => {
       category,
       brand,
       size,
-      color 
+      color,
+      min_price
     } = req.body;
     
     // Validate required fields
@@ -135,9 +136,9 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid user ID' });
     }
     
-    // Calculate minimum price (50% of original)
+    // Calculate minimum price (50% of original) if not provided
     const originalPrice = parseFloat(price);
-    const minPrice = Math.round((originalPrice * 0.5) * 100) / 100;
+    const calculatedMinPrice = min_price !== undefined ? parseFloat(min_price) : Math.round((originalPrice * 0.5) * 100) / 100;
     
     // Create the listing in our database first
     const { data: listing, error } = await supabase
@@ -148,7 +149,7 @@ router.post('/', async (req, res) => {
         description,
         price: originalPrice,
         original_price: originalPrice,
-        min_price: minPrice,
+        min_price: calculatedMinPrice,
         image_urls,
         status: 'active',
         condition: condition || 'Used - Good',
@@ -232,7 +233,7 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, description, price, status } = req.body;
+    const { title, description, price, status, min_price } = req.body;
     
     // Fetch the current listing
     const { data: existingListing, error: fetchError } = await supabase
@@ -251,6 +252,7 @@ router.put('/:id', async (req, res) => {
     if (title !== undefined) updates.title = title;
     if (description !== undefined) updates.description = description;
     if (status !== undefined) updates.status = status;
+    if (min_price !== undefined) updates.min_price = min_price;
     
     // Handle price updates separately to track history
     if (price !== undefined && price !== existingListing.price) {
