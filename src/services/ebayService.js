@@ -84,7 +84,7 @@ async function createEbayListing(listing, imageUrls) {
         'X-EBAY-API-APP-NAME': ebayConfig.appId,
         'X-EBAY-API-DEV-NAME': ebayConfig.devId,
         'X-EBAY-API-CERT-NAME': ebayConfig.certId,
-        'X-EBAY-API-IAF-TOKEN': ebayConfig.authToken,
+        'Authorization': `Bearer ${ebayConfig.authToken}`,
         'X-EBAY-API-DETAIL-LEVEL': '0',
         'Content-Type': 'application/xml'
       },
@@ -156,7 +156,8 @@ async function updateEbayListing(ebayItemId, updateData) {
         'X-EBAY-API-APP-NAME': ebayConfig.appId,
         'X-EBAY-API-DEV-NAME': ebayConfig.devId,
         'X-EBAY-API-CERT-NAME': ebayConfig.certId,
-        'X-EBAY-API-IAF-TOKEN': ebayConfig.authToken,
+        'Authorization': `Bearer ${ebayConfig.authToken}`,
+        'X-EBAY-API-DETAIL-LEVEL': '0',
         'Content-Type': 'application/xml'
       },
       data: generateEbayXml(ebayUpdate)
@@ -209,7 +210,8 @@ async function endEbayListing(ebayItemId) {
         'X-EBAY-API-APP-NAME': ebayConfig.appId,
         'X-EBAY-API-DEV-NAME': ebayConfig.devId,
         'X-EBAY-API-CERT-NAME': ebayConfig.certId,
-        'X-EBAY-API-IAF-TOKEN': ebayConfig.authToken,
+        'Authorization': `Bearer ${ebayConfig.authToken}`,
+        'X-EBAY-API-DETAIL-LEVEL': '0',
         'Content-Type': 'application/xml'
       },
       data: generateEbayXml(ebayEnd)
@@ -256,7 +258,8 @@ async function checkEbayListingSold(ebayItemId) {
         'X-EBAY-API-APP-NAME': ebayConfig.appId,
         'X-EBAY-API-DEV-NAME': ebayConfig.devId,
         'X-EBAY-API-CERT-NAME': ebayConfig.certId,
-        'X-EBAY-API-IAF-TOKEN': ebayConfig.authToken,
+        'Authorization': `Bearer ${ebayConfig.authToken}`,
+        'X-EBAY-API-DETAIL-LEVEL': '0',
         'Content-Type': 'application/xml'
       },
       data: generateEbayXml({ ItemID: ebayItemId })
@@ -304,7 +307,17 @@ function generateEbayXml(data) {
     return xml;
   };
   
-  return `<?xml version="1.0" encoding="utf-8"?><AddItemRequest xmlns="urn:ebay:apis:eBLBaseComponents">${generateXmlFromObject(data)}</AddItemRequest>`;
+  // Determine which API call we're making based on the data
+  let requestType = 'AddItemRequest';
+  if (data.ItemID && !data.Item) {
+    requestType = 'GetItemRequest';
+  } else if (data.ItemID && data.EndingReason) {
+    requestType = 'EndItemRequest';
+  } else if (data.Item && data.Item.ItemID) {
+    requestType = 'ReviseItemRequest';
+  }
+  
+  return `<?xml version="1.0" encoding="utf-8"?><${requestType} xmlns="urn:ebay:apis:eBLBaseComponents">${generateXmlFromObject(data)}</${requestType}>`;
 }
 
 /**
