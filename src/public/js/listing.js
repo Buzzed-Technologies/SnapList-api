@@ -184,74 +184,19 @@ function updateMetadata(listing) {
   
   ogTitle.content = `${listing.title} - SnapList`;
   ogDescription.content = listing.description.substring(0, 200) + (listing.description.length > 200 ? '...' : '');
-  ogUrl.content = window.location.href;
   
   // Set image if available
   if (listing.image_urls && listing.image_urls.length > 0) {
-    createSocialCardImage(listing);
+    const imageUrl = listing.image_urls[0];
+    // If it's already a complete URL, use it as is, otherwise prefix with Supabase
+    const fullUrl = imageUrl.startsWith('http') 
+      ? imageUrl 
+      : `https://lsrdviupiuoztnccwdxk.supabase.co/storage/v1/object/public/snaplist-images/uploads/${imageUrl}`;
+    
+    ogImage.content = fullUrl;
   }
-}
-
-// Create a social card image with logo overlay
-function createSocialCardImage(listing) {
-  if (!listing.image_urls || listing.image_urls.length === 0) return;
   
-  // Get the first image URL
-  const imageUrl = listing.image_urls[0];
-  const fullUrl = imageUrl.startsWith('http') 
-    ? imageUrl 
-    : `https://lsrdviupiuoztnccwdxk.supabase.co/storage/v1/object/public/snaplist-images/uploads/${imageUrl}`;
-  
-  // Create a canvas element to manipulate the image
-  const canvas = document.createElement('canvas');
-  canvas.width = 1200;  // Standard Open Graph image size
-  canvas.height = 630;
-  const ctx = canvas.getContext('2d');
-  
-  // Load the main listing image
-  const listingImg = new Image();
-  listingImg.crossOrigin = 'anonymous';
-  listingImg.onload = function() {
-    // Draw the listing image covering the entire canvas
-    ctx.drawImage(listingImg, 0, 0, canvas.width, canvas.height);
-    
-    // Add semi-transparent overlay at the bottom
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-    ctx.fillRect(0, canvas.height - 150, canvas.width, 150);
-    
-    // Add listing title
-    ctx.fillStyle = 'white';
-    ctx.font = 'bold 36px Inter, sans-serif';
-    ctx.textAlign = 'left';
-    ctx.fillText(listing.title, 140, canvas.height - 80, canvas.width - 160);
-    
-    // Add price
-    ctx.fillStyle = '#FF6D14';
-    ctx.font = 'bold 28px Inter, sans-serif';
-    ctx.fillText(`$${listing.price.toFixed(2)}`, 140, canvas.height - 40);
-    
-    // Load and draw the logo
-    const logoImg = new Image();
-    logoImg.crossOrigin = 'anonymous';
-    logoImg.onerror = function() {
-      // If SVG fails, try PNG
-      logoImg.src = '/static/img/logo.png';
-    };
-    logoImg.onload = function() {
-      // Draw logo in the bottom left
-      const logoSize = 100;
-      ctx.drawImage(logoImg, 20, canvas.height - 130, logoSize, logoSize);
-      
-      // Convert canvas to data URL and set as og:image
-      const ogImage = document.querySelector('meta[property="og:image"]');
-      ogImage.content = canvas.toDataURL('image/jpeg', 0.9);
-    };
-    // Try SVG first
-    logoImg.src = '/static/img/logo.svg';
-  };
-  
-  // Start loading the listing image
-  listingImg.src = fullUrl;
+  ogUrl.content = window.location.href;
 }
 
 function showError(message) {
