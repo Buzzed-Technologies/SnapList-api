@@ -2048,12 +2048,34 @@
     // Initialize notification sound
     function initNotificationSound() {
       try {
-        // Use a real MP3 file instead of base64 encoded data
-        notificationSound = new Audio('/static/sounds/snapnotif.mp3');
+        // Use absolute path to ensure it works in all environments
+        const soundPath = window.location.origin + '/static/sounds/snapnotif.mp3';
+        console.log("Attempting to load sound from:", soundPath);
         
-        // Set properties
-        notificationSound.volume = 0.8;
-        notificationSound.preload = 'auto';
+        // Base64 encoded fallback sound (short beep) in case the external file fails
+        const fallbackSound = 'data:audio/mp3;base64,SUQzAwAAAAACHVRJVDIAAAAZAAADU291bmQgZWZmZWN0cyAtIEJlZXAgYmVlcFRQRTEAAAAXAAADd3d3LmZyZWVzb3VuZC5vcmcvZGF0YVRBTEIAAAAWAAAATWF0ZXJpYWxpemUvRW5zZW1ibGVDT01NAAAAEgAAAGVuZwBObyBDb21tZW50VFNTRQAAAA8AAABMYXZmNTguMjkuMTAwAAAAAAAAAAAAAAD/+5DEAAAIjAF1NAIACAAAA0gAAAADMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP/7kMQAAAZoAWfNAACAAAADSAAAAACNsIAPEEf2GY3kABh+QD/OKw+oILj8AOAzYdCHfbh2PB/u+AAAAAAAAAAAAAAAAAAAAAAAcIBYmW/i5YH4fA/ePeHeP4Ph3jvh3j+H4CggFHfB8cEOng8AAAAAAAAAAH/+5DEGwAJbANZvAMAKAAANIAAAAQX8BzQFSAAEAAlIEjsv+Y9J9znOc/5MDrp5HPt/+ec+ec+ZLH+/nOc5znPmcA/8/OdngEjgAAAAAAAAAAAAHAwIBAIBAJ//+5DEK4AKwANnHAMAIAAANIAAAAQAwDAMAwDAMAgEAgECgYBgGAYBgGAYBgEAgEAgUDAMAwDAMAwDAIBAIBAoDAMAwDAMAwDAIBAIBAoGAYBgGAYBgGAQCAQCBQMAwDAMAwDAM//7kMQ3AAp8A2qcAQAAAAANIAAAAAgEAgECgYBgGAYBgGAYBAIBAIFAwDAMAwDAMAwCAQCAQKBgGAYBgGAYBgEAgEAgUDAMAwDAMAwDAIBAIBAAA';
+        
+        // Try loading the external file first
+        fetch(soundPath, { method: 'HEAD' })
+          .then(response => {
+            if (response.ok) {
+              console.log("External sound file exists, using it");
+              notificationSound = new Audio(soundPath);
+            } else {
+              console.log("External sound file not found, using base64 fallback");
+              notificationSound = new Audio(fallbackSound);
+            }
+            
+            // Set properties
+            notificationSound.volume = 0.8;
+            notificationSound.preload = 'auto';
+          })
+          .catch(err => {
+            console.warn("Error checking sound file, using fallback:", err);
+            notificationSound = new Audio(fallbackSound);
+            notificationSound.volume = 0.8;
+            notificationSound.preload = 'auto';
+          });
         
         // Mark document as having interacted
         document.documentElement.setAttribute('data-user-interacted', 'true');
@@ -2063,16 +2085,17 @@
           console.log("User interaction detected - unlocking audio");
           document.documentElement.setAttribute('data-user-interacted', 'true');
           
-          // Try to play a silent sound to unlock audio context
-          const quietSound = new Audio('/static/sounds/snapnotif.mp3');
-          quietSound.volume = 0.01; // Very quiet
-          quietSound.play().then(() => {
-            console.log("Audio context unlocked by user interaction");
-            quietSound.pause();
-            quietSound.currentTime = 0;
-          }).catch(err => {
-            console.warn("Couldn't unlock audio context:", err);
-          });
+          if (notificationSound) {
+            // Try to play the sound to unlock audio context
+            notificationSound.volume = 0.01; // Very quiet
+            notificationSound.play().then(() => {
+              console.log("Audio context unlocked by user interaction");
+              notificationSound.pause();
+              notificationSound.currentTime = 0;
+            }).catch(err => {
+              console.warn("Couldn't unlock audio context:", err);
+            });
+          }
         };
         
         // Add these listeners to the whole document
@@ -2089,9 +2112,13 @@
     // Play notification sound
     function playNotificationSound() {
       try {
-        // Just directly create and play the sound
-        const sound = new Audio('/static/sounds/snapnotif.mp3');
-        sound.volume = 1.0;
+        if (!notificationSound) {
+          console.warn("No notification sound available");
+          showVisualNotification();
+          return;
+        }
+        
+        console.log("Playing notification sound");
         
         // Create a user interaction if possible (click event)
         try {
@@ -2105,8 +2132,12 @@
           console.log('Could not simulate user interaction');
         }
         
+        // Reload current sound to ensure it plays from the beginning
+        notificationSound.currentTime = 0;
+        notificationSound.volume = 1.0;
+        
         // Play the sound and handle errors
-        const playPromise = sound.play();
+        const playPromise = notificationSound.play();
         
         if (playPromise !== undefined) {
           playPromise.then(() => {
@@ -2135,7 +2166,7 @@
               
               // When clicked, try to play the sound
               soundButton.onclick = () => {
-                new Audio('/static/sounds/snapnotif.mp3').play()
+                notificationSound.play()
                   .then(() => {
                     // It worked, remember that user has interacted
                     document.documentElement.setAttribute('data-user-interacted', 'true');
