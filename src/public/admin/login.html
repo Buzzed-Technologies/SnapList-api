@@ -22,10 +22,23 @@
       --success-color: #34C759;
       --warning-color: #FF9500;
       --danger-color: #FF3B30;
+      --transition-speed: 0.3s;
+    }
+    
+    [data-theme="dark"] {
+      --primary-color: #FF6A00;
+      --primary-light: #2C1A0D;
+      --primary-dark: #FF8A3F;
+      --text-primary: #FFFFFF;
+      --text-secondary: #AAAAAA;
+      --background-color: #1A1A1A;
+      --card-background: #222222;
+      --border-color: #333333;
+      --shadow-color: rgba(0, 0, 0, 0.2);
     }
     
     @media (prefers-color-scheme: dark) {
-      :root {
+      :root:not([data-theme="light"]) {
         --primary-color: #FF6A00;
         --primary-light: #2C1A0D;
         --primary-dark: #FF8A3F;
@@ -61,6 +74,7 @@
       background-color: var(--card-background);
       border-radius: 16px;
       box-shadow: 0 8px 24px var(--shadow-color);
+      transition: all var(--transition-speed);
     }
     
     .login-header {
@@ -167,9 +181,88 @@
     .back-link:hover {
       text-decoration: underline;
     }
+    
+    .theme-toggle-wrapper {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+    
+    .theme-toggle {
+      position: relative;
+      display: inline-block;
+      width: 48px;
+      height: 24px;
+    }
+    
+    .theme-toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: var(--border-color);
+      transition: var(--transition-speed);
+      border-radius: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 6px;
+      overflow: hidden;
+    }
+    
+    .toggle-slider .icon {
+      font-size: 12px;
+      position: relative;
+      z-index: 2;
+    }
+    
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: var(--card-background);
+      transition: var(--transition-speed);
+      border-radius: 50%;
+      z-index: 1;
+    }
+    
+    input:checked + .toggle-slider {
+      background-color: var(--primary-color);
+    }
+    
+    input:checked + .toggle-slider:before {
+      transform: translateX(24px);
+    }
   </style>
 </head>
 <body>
+  <div class="theme-toggle-wrapper">
+    <span>Dark Mode</span>
+    <label class="theme-toggle">
+      <input type="checkbox" id="themeToggle">
+      <span class="toggle-slider">
+        <span class="icon">🌙</span>
+        <span class="icon">☀️</span>
+      </span>
+    </label>
+  </div>
+
   <div class="login-container">
     <div class="login-header">
       <img src="/static/img/logo.png" alt="SnapList Logo" class="login-logo">
@@ -196,6 +289,37 @@
   </div>
   
   <script>
+    // Theme Management
+    function initTheme() {
+      const savedTheme = localStorage.getItem('snaplist_theme');
+      const themeToggle = document.getElementById('themeToggle');
+      
+      if (savedTheme === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        themeToggle.checked = true;
+      } else if (savedTheme === 'light') {
+        document.documentElement.setAttribute('data-theme', 'light');
+        themeToggle.checked = false;
+      } else {
+        // Use system preference if no saved theme
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        themeToggle.checked = prefersDark;
+        if (prefersDark) {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        }
+      }
+      
+      themeToggle.addEventListener('change', function() {
+        if (this.checked) {
+          document.documentElement.setAttribute('data-theme', 'dark');
+          localStorage.setItem('snaplist_theme', 'dark');
+        } else {
+          document.documentElement.setAttribute('data-theme', 'light');
+          localStorage.setItem('snaplist_theme', 'light');
+        }
+      });
+    }
+
     // Check if already authenticated
     function checkAuth() {
       const isAuthenticated = localStorage.getItem('snaplist_admin_auth');
@@ -238,6 +362,7 @@
     // Initialize
     document.addEventListener('DOMContentLoaded', function() {
       checkAuth();
+      initTheme();
       
       // Focus on email input
       document.getElementById('email').focus();
