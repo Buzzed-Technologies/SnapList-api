@@ -874,7 +874,21 @@
       
       chatList.innerHTML = '';
       
+      // Group chats by conversation_id to avoid duplicates
+      const conversationMap = new Map();
+      
       chats.forEach(chat => {
+        const convId = chat.conversation_id || chat.id; // Use conversation_id if available, otherwise use id
+        
+        // Only add if this conversation isn't in the map yet, or if this chat is newer
+        if (!conversationMap.has(convId) || 
+            new Date(chat.created_at) > new Date(conversationMap.get(convId).created_at)) {
+          conversationMap.set(convId, chat);
+        }
+      });
+      
+      // Render the unique conversations
+      Array.from(conversationMap.values()).forEach(chat => {
         const chatItem = document.createElement('div');
         chatItem.className = `chat-item ${chat.id === currentChatId ? 'active' : ''}`;
         chatItem.dataset.id = chat.id;
@@ -962,8 +976,8 @@
           </div>
           
           <div class="chat-action-dropdown">
-            <button class="chat-action-button">
-              Actions ⚙️
+            <button id="toggleAiButton" class="chat-action-button" onclick="toggleAiResponse()">
+              ${chat.hide_ai_response ? 'Show AI Response' : 'Hide AI Response'}
             </button>
           </div>
         </div>
@@ -975,10 +989,12 @@
             <span class="chat-message-time">${formattedDate}</span>
           </div>
           
+          ${!chat.hide_ai_response ? `
           <div class="chat-message chat-message-ai">
             ${chat.ai_response}
             <span class="chat-message-time">${formattedDate}</span>
           </div>
+          ` : ''}
           
           ${chat.admin_response ? `
             <div class="chat-message chat-message-admin">
@@ -1026,6 +1042,58 @@
         button.addEventListener('click', function() {
           updateChatStatus(chat.id, this.dataset.status);
         });
+      });
+    }
+    
+    // Toggle AI response visibility
+    function toggleAiResponse() {
+      if (!currentChatId) return;
+      
+      // Get the current chat
+      const chat = chatData.find(c => c.id === currentChatId);
+      if (!chat) return;
+      
+      // Toggle the hide_ai_response property
+      chat.hide_ai_response = !chat.hide_ai_response;
+      
+      // Update the toggle button text
+      const toggleButton = document.getElementById('toggleAiButton');
+      if (toggleButton) {
+        toggleButton.textContent = chat.hide_ai_response ? 'Show AI Response' : 'Hide AI Response';
+      }
+      
+      // Update the chat display
+      const aiMessageElement = document.querySelector('.chat-message-ai');
+      if (aiMessageElement) {
+        if (chat.hide_ai_response) {
+          aiMessageElement.style.display = 'none';
+        } else {
+          aiMessageElement.style.display = 'block';
+        }
+      } else if (!chat.hide_ai_response && chat.ai_response) {
+        // AI message doesn't exist in the DOM but should be shown
+        const userMessage = document.querySelector('.chat-message-user');
+        if (userMessage) {
+          const aiMessage = document.createElement('div');
+          aiMessage.className = 'chat-message chat-message-ai';
+          aiMessage.innerHTML = `
+            ${chat.ai_response}
+            <span class="chat-message-time">${formatDetailedTime(chat.created_at)}</span>
+          `;
+          userMessage.insertAdjacentElement('afterend', aiMessage);
+        }
+      }
+      
+      // Send the update to the server
+      fetch(`/api/admin/support-chats/${currentChatId}/toggle-ai`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+      .then(response => response.json())
+      .catch(error => {
+        console.error('Error toggling AI response:', error);
       });
     }
     
@@ -1405,115 +1473,6 @@
             });
     }
 
-    // Toggle AI response visibility for the current chat
-    function toggleAiResponse() {
-        if (!currentChatId) return;
-        
-        // Show loading state on button
-        const toggleButton = document.querySelector('#toggleAiButton');
-        const originalText = toggleButton.textContent;
-        toggleButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Updating...';
-        toggleButton.disabled = true;
-        
-        // Call API to toggle AI response visibility
-        fetch(`/api/admin/support-chats/${currentChatId}/toggle-ai`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Refresh the chat display
-                    if (currentConversationId) {
-                        refreshCurrentChat();
-                    } else {
-                        // This is a legacy chat, just reload
-                        fetchChat(currentChatId);
-                    }
-                    // Update button text
-                    toggleButton.textContent = data.chat.hide_ai_response ? 'Show AI Response' : 'Hide AI Response';
-                } else {
-                    alert('Failed to toggle AI response');
-                    toggleButton.textContent = originalText;
-                }
-                toggleButton.disabled = false;
-            })
-            .catch(error => {
-                console.error('Error toggling AI response:', error);
-                alert('Failed to toggle AI response: ' + error.message);
-                toggleButton.textContent = originalText;
-                toggleButton.disabled = false;
-            });
-    }
-
-    // Modify the existing fetchChat function to also handle conversation_id
-    function fetchChat(id) {
-        // Reset variables for new chat
-        currentChatId = id;
-        currentConversationId = null;
-        
-        // Stop any existing refresh interval
-        stopChatRefresh();
-        
-        // Show loading state
-        const chatContainer = document.querySelector('#chatDetails');
-        chatContainer.innerHTML = '<div class="d-flex justify-content-center my-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
-        
-        // Clear form
-        document.querySelector('#adminResponse').value = '';
-        
-        // Show chat panel
-        document.querySelector('#chatPanel').classList.remove('d-none');
-        
-        // Remove new chats indicator if it exists
-        const indicator = document.getElementById('newChatsIndicator');
-        if (indicator) {
-            indicator.remove();
-        }
-        
-        fetch(`/api/admin/support-chats/${id}`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    const chat = data.chat;
-                    currentConversationId = chat.conversation_id;
-                    
-                    // If we have a conversation ID, fetch all messages for this conversation
-                    if (currentConversationId) {
-                        fetch(`/api/admin/support-chats/conversation/${currentConversationId}`)
-                            .then(response => response.json())
-                            .then(convData => {
-                                if (convData.success) {
-                                    displayChatMessages(convData.messages);
-                                    // Start auto-refresh for this conversation
-                                    startChatRefresh();
-                                } else {
-                                    displaySingleChat(chat);
-                                }
-                            })
-                            .catch(error => {
-                                console.error('Error fetching conversation:', error);
-                                displaySingleChat(chat);
-                            });
-                    } else {
-                        // Legacy chat without conversation
-                        displaySingleChat(chat);
-                    }
-                    
-                    // Update buttons based on status
-                    updateActionButtons(chat);
-                } else {
-                    chatContainer.innerHTML = '<div class="alert alert-danger">Failed to load chat</div>';
-                }
-            })
-            .catch(error => {
-                console.error('Error fetching chat:', error);
-                chatContainer.innerHTML = '<div class="alert alert-danger">Error loading chat: ' + error.message + '</div>';
-            });
-    }
-
     // Display a conversation with multiple messages
     function displayChatMessages(messages) {
         if (!messages || messages.length === 0) return;
@@ -1608,105 +1567,7 @@
         `;
         
         chatContainer.innerHTML = content;
-        
-        // Scroll to the bottom of the chat messages
-        const messagesContainer = document.querySelector('#chatMessages');
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    }
-
-    // Display a single chat (for legacy support)
-    function displaySingleChat(chat) {
-        const chatContainer = document.querySelector('#chatDetails');
-        
-        let content = `
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5>Chat with ${chat.users?.name || 'Customer'}</h5>
-                <div class="btn-group">
-                    <button id="toggleAiButton" class="btn btn-outline-secondary btn-sm" onclick="toggleAiResponse()">
-                        ${chat.hide_ai_response ? 'Show AI Response' : 'Hide AI Response'}
-                    </button>
-                </div>
-            </div>
-            <div id="chatMessages" class="border rounded p-3 mb-3 bg-light" style="max-height: 400px; overflow-y: auto;">
-                <div class="chat-message mb-2">
-                    <strong class="text-primary">Customer:</strong>
-                    <div class="border rounded p-2 bg-white">${chat.message}</div>
-                </div>
-        `;
-        
-        // AI response (conditionally show based on hide_ai_response flag)
-        if (!chat.hide_ai_response) {
-            content += `
-                <div class="chat-message mb-2 ms-4">
-                    <strong class="text-info">AI Response:</strong>
-                    <div class="border rounded p-2 bg-white">${chat.ai_response}</div>
-                </div>
-            `;
-        }
-        
-        // Admin response (if it exists)
-        if (chat.admin_response) {
-            content += `
-                <div class="chat-message mb-2 ms-4">
-                    <strong class="text-success">Support Team:</strong>
-                    <div class="border rounded p-2 bg-white">${chat.admin_response}</div>
-                </div>
-            `;
-        }
-        
-        content += '</div>';
-        
-        // Add rest of the chat details
-        content += `
-            <div class="card mb-3">
-                <div class="card-header">
-                    <strong>Message Details</strong>
-                </div>
-                <div class="card-body">
-                    <div class="row mb-3">
-                        <div class="col-md-4"><strong>Customer:</strong></div>
-                        <div class="col-md-8">${chat.users?.name || 'Unknown'}</div>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-md-4"><strong>Status:</strong></div>
-                        <div class="col-md-8"><span class="badge bg-${getStatusBadgeColor(chat.status)}">${chat.status}</span></div>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-md-4"><strong>Created:</strong></div>
-                        <div class="col-md-8">${new Date(chat.created_at).toLocaleString()}</div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="card">
-                <div class="card-header">
-                    <strong>Respond to Customer</strong>
-                </div>
-                <div class="card-body">
-                    <form id="responseForm" onsubmit="sendAdminReply('${chat.id}'); return false;">
-                        <div class="mb-3">
-                            <textarea id="adminResponse" class="form-control" rows="3" placeholder="Type your response..." required></textarea>
-                        </div>
-                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                            <button type="submit" class="btn btn-primary">Send Reply</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        `;
-        
-        chatContainer.innerHTML = content;
-    }
-
-    // Helper function to get badge color based on status
-    function getStatusBadgeColor(status) {
-        switch (status) {
-            case 'pending': return 'warning';
-            case 'responded': return 'success';
-            case 'resolved': return 'info';
-            default: return 'secondary';
-        }
     }
   </script>
 </body>
-</html> 
+</html>
