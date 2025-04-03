@@ -2032,20 +2032,8 @@
     // Initialize notification sound
     function initNotificationSound() {
       try {
-        notificationSound = new Audio('/static/sounds/notification.mp3');
-        // Set preload attribute to auto
-        notificationSound.preload = 'auto';
-        
-        // Add error handler to log issues
-        notificationSound.addEventListener('error', function(e) {
-          console.error('Notification sound error:', e);
-          console.error('Audio error code:', notificationSound.error ? notificationSound.error.code : 'unknown');
-          
-          // Fallback to using a base64 encoded audio if loading from file fails
-          initFallbackNotificationSound();
-        });
-        
-        notificationSound.load();
+        // Use fallback sound directly instead of trying to load the file first
+        initFallbackNotificationSound();
         
         // Test preload to handle any browser security issues
         document.addEventListener('click', function triggerFirstInteraction() {
@@ -2057,14 +2045,11 @@
             console.log('Notification sound ready');
           }).catch(e => {
             console.warn('Could not preload notification sound:', e);
-            // Try fallback if initial load fails
-            initFallbackNotificationSound();
           });
           document.removeEventListener('click', triggerFirstInteraction);
         }, { once: true });
       } catch (e) {
         console.error('Error setting up notification sound:', e);
-        initFallbackNotificationSound();
       }
     }
 
@@ -2077,9 +2062,9 @@
         notificationSound = new Audio(base64Sound);
         notificationSound.preload = 'auto';
         notificationSound.load();
-        console.log('Fallback notification sound initialized');
+        console.log('Notification sound initialized');
       } catch (e) {
-        console.error('Fallback notification sound initialization failed:', e);
+        console.error('Notification sound initialization failed:', e);
       }
     }
 
