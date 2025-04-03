@@ -705,6 +705,40 @@
       border-radius: 50%;
       animation: spin 1s linear infinite;
     }
+    
+    /* Add styles for unread indicators on escalated chats */
+    .chat-item.escalated.unread {
+      position: relative;
+    }
+    
+    .chat-item.escalated.unread::after {
+      content: '';
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 10px;
+      height: 10px;
+      background-color: var(--danger-color);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+      0% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+      }
+      
+      70% {
+        transform: scale(1);
+        box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+      }
+      
+      100% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+      }
+    }
   </style>
 </head>
 <body>
@@ -811,8 +845,9 @@
     let mainListRefreshInterval = null;
     let chatRefreshInterval = null;
     let newEscalatedCount = 0;
-    let notificationSound = new Audio('/static/sounds/notification.mp3');
-
+    // Create audio object for notification sound
+    let notificationSound = null;
+    
     // Date formatting options
     const dateOptions = { 
       year: 'numeric', 
@@ -1112,6 +1147,9 @@
     function loadChatDetail(chat) {
       const chatDetail = document.getElementById('chatDetail');
       
+      // Set current conversation ID for auto-refresh
+      currentConversationId = chat.conversation_id || chat.id;
+      
       // Format dates for display
       const created = new Date(chat.created_at);
       const formattedCreated = created.toLocaleString('en-US', dateOptions);
@@ -1184,6 +1222,12 @@
     
     // Load the entire conversation for a chat
     function loadConversationDetail(chat) {
+      // Set current conversation ID for auto-refresh
+      currentConversationId = chat.conversation_id || chat.id;
+      
+      // Start chat refresh
+      startChatRefresh();
+      
       // Start by showing a loading indicator
       const chatDetail = document.getElementById('chatDetail');
       chatDetail.innerHTML = `
@@ -1472,37 +1516,47 @@
         const data = await response.json();
         
         if (data.success) {
-          // Update status in UI
-          let statusText = 'Pending';
-          let statusClass = 'pending';
-          
-          if (status === 'responded') {
-            statusText = 'Responded';
-            statusClass = 'responded';
-          } else if (status === 'resolved') {
-            statusText = 'Resolved';
-            statusClass = 'resolved';
+          // Update the status in our cached chat data
+          const chatIndex = chatData.findIndex(c => c.id === chatId);
+          if (chatIndex !== -1) {
+            chatData[chatIndex].status = status;
           }
           
-          document.querySelector('.chat-detail-status').textContent = statusText;
-          document.querySelector('.chat-detail-status').className = `chat-detail-status ${statusClass}`;
+          // Update status in the dropdown
+          const statusSelect = document.getElementById('statusSelect');
+          if (statusSelect) {
+            statusSelect.value = status;
+          }
           
-          // Update status buttons
-          const statusButtons = document.querySelector('.chat-status-buttons');
-          if (status === 'responded') {
-            statusButtons.innerHTML = `
-              <button class="status-button mark-resolved" data-status="resolved">Mark as Resolved</button>
-            `;
+          // Update status in the sidebar chat list
+          const chatItem = document.querySelector(`.chat-item[data-id="${chatId}"]`);
+          if (chatItem) {
+            // Remove all status classes
+            chatItem.classList.remove('pending', 'responded', 'resolved', 'escalated');
+            // Add the new status class
+            chatItem.classList.add(status);
             
-            // Add event listener to new status button
-            document.querySelector('.mark-resolved').addEventListener('click', function() {
-              updateChatStatus(chatId, 'resolved');
-            });
-          } else if (status === 'resolved') {
-            statusButtons.innerHTML = ''; // No buttons when resolved
+            // Update status text in the item
+            const statusElement = chatItem.querySelector('.chat-item-status');
+            if (statusElement) {
+              statusElement.classList.remove('pending', 'responded', 'resolved', 'escalated');
+              statusElement.classList.add(status);
+              
+              let statusText = status.charAt(0).toUpperCase() + status.slice(1);
+              if (status === 'escalated') {
+                statusText = '⚠️ Escalated';
+              }
+              statusElement.textContent = statusText;
+            }
           }
           
-          // Refresh chat list to show the updated status
+          // If escalated, play a notification sound
+          if (status === 'escalated') {
+            playNotificationSound();
+            showNotification('Chat has been escalated');
+          }
+          
+          // Refresh the chat list to reflect the changes
           fetchSupportChats();
         } else {
           throw new Error(data.message || 'Failed to update status');
@@ -1590,11 +1644,7 @@
           // Check if there are new escalated chats
           if (newEscalatedCount > oldEscalatedCount) {
             // Play notification sound
-            try {
-              notificationSound.play().catch(e => console.log('Could not play notification sound', e));
-            } catch (e) {
-              console.log('Error playing sound:', e);
-            }
+            playNotificationSound();
             
             // Add visual indicator in the sidebar
             updateSidebarNotification(newEscalatedCount);
@@ -1602,6 +1652,16 @@
             // If we're not currently on the escalated filter, show a notification
             if (currentFilter !== 'escalated') {
               showNotification(`${newEscalatedCount} escalated chats need attention`);
+            }
+            
+            // Mark new escalated chats with unread indicator
+            if (currentFilter === 'escalated') {
+              escalatedChats.forEach(chat => {
+                const chatItem = document.querySelector(`.chat-item[data-id="${chat.id}"]`);
+                if (chatItem) {
+                  chatItem.classList.add('unread');
+                }
+              });
             }
           }
           
@@ -1713,7 +1773,7 @@
             const currentMessageCount = document.querySelectorAll('.chat-message').length;
             if (data.messages.length > currentMessageCount / 2) { // Divide by 2 because we show user and AI as separate messages
               // If we were viewing a specific chat in detail, load the conversation again
-              const chat = chatData.find(c => c.conversation_id === currentConversationId);
+              const chat = chatData.find(c => c.conversation_id === currentConversationId || c.id === currentConversationId);
               if (chat) {
                 loadConversationDetail(chat);
               }
@@ -1735,10 +1795,55 @@
         });
     }
     
+    // Initialize notification sound
+    function initNotificationSound() {
+      try {
+        notificationSound = new Audio('/static/sounds/notification.mp3');
+        notificationSound.load();
+        // Test preload to handle any browser security issues
+        document.addEventListener('click', function triggerFirstInteraction() {
+          notificationSound.volume = 0; // Mute it for the test
+          notificationSound.play().then(() => {
+            notificationSound.pause();
+            notificationSound.currentTime = 0;
+            notificationSound.volume = 1; // Reset volume
+            console.log('Notification sound ready');
+          }).catch(e => {
+            console.warn('Could not preload notification sound:', e);
+          });
+          document.removeEventListener('click', triggerFirstInteraction);
+        }, { once: true });
+      } catch (e) {
+        console.error('Error setting up notification sound:', e);
+      }
+    }
+
+    // Play notification sound with retry mechanism
+    function playNotificationSound() {
+      if (!notificationSound) {
+        console.warn('Notification sound not initialized');
+        return;
+      }
+      
+      // Reset sound to beginning
+      notificationSound.currentTime = 0;
+      
+      // Try to play with fallback
+      const playPromise = notificationSound.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => console.log('Notification sound played successfully'))
+          .catch(error => {
+            console.warn('Error playing notification sound:', error);
+          });
+      }
+    }
+    
     // Initialize
     document.addEventListener('DOMContentLoaded', function() {
       checkAuth();
       displayCurrentDate();
+      initNotificationSound();
       
       // Default to showing escalated chats
       currentFilter = 'escalated';
@@ -1774,6 +1879,9 @@
               
               // Add active class to this item
               chatItem.classList.add('active');
+              
+              // Remove unread indicator if present
+              chatItem.classList.remove('unread');
             }
             
             // Load chat detail - if we have a conversation_id, load the full conversation
@@ -1792,13 +1900,6 @@
       });
       
       startMainListRefresh();
-      
-      // Preload notification sound
-      try {
-        notificationSound.load();
-      } catch (e) {
-        console.log('Could not preload sound:', e);
-      }
     });
 
     // Handle page visibility changes

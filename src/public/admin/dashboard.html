@@ -9,14 +9,14 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" href="/static/img/logo.png">
   <!-- Chart.js Library -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
   <!-- DateRangePicker for time filtering -->
   <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
   <script type="text/javascript" src="https://cdn.jsdelivr.net/jquery/latest/jquery.min.js"></script>
   <script type="text/javascript" src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
   <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
   <!-- ApexCharts - More advanced charting library -->
-  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.41.0/dist/apexcharts.min.js"></script>
   <!-- For advanced gradients and animations -->
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-gradient"></script>
   <style>
@@ -1595,6 +1595,160 @@
       } catch (error) {
         console.error('Error fetching top selling data:', error);
         return null;
+      }
+    }
+    
+    // Fetch KPI Data - Calculate real values from actual data
+    async function fetchKPIData() {
+      try {
+        // Fetch listings data to calculate KPIs
+        const listingsResponse = await fetch('/api/admin/listings?limit=1000');
+        const usersResponse = await fetch('/api/admin/users?limit=1000');
+        const salesResponse = await fetch('/api/admin/listings?status=sold&limit=1000');
+        
+        if (!listingsResponse.ok || !usersResponse.ok || !salesResponse.ok) {
+          throw new Error('Failed to fetch necessary data for KPIs');
+        }
+        
+        const listingsData = await listingsResponse.json();
+        const usersData = await usersResponse.json();
+        const salesData = await salesResponse.json();
+        
+        // Calculate average time to sell
+        let totalTimeToSell = 0;
+        let soldCount = 0;
+        
+        if (salesData.success && salesData.listings && salesData.listings.length > 0) {
+          salesData.listings.forEach(item => {
+            if (item.created_at && item.sold_at) {
+              const createdDate = new Date(item.created_at);
+              const soldDate = new Date(item.sold_at);
+              const daysToSell = (soldDate - createdDate) / (1000 * 60 * 60 * 24);
+              if (daysToSell >= 0) {
+                totalTimeToSell += daysToSell;
+                soldCount++;
+              }
+            }
+          });
+          
+          if (soldCount > 0) {
+            const avgTimeToSell = totalTimeToSell / soldCount;
+            document.getElementById('avgListingTime').textContent = `${avgTimeToSell.toFixed(1)} days`;
+          } else {
+            document.getElementById('avgListingTime').textContent = 'N/A';
+          }
+        } else {
+          document.getElementById('avgListingTime').textContent = 'N/A';
+        }
+        
+        // Calculate average order value
+        let totalSalesValue = 0;
+        if (salesData.success && salesData.listings && salesData.listings.length > 0) {
+          salesData.listings.forEach(item => {
+            if (item.price) {
+              totalSalesValue += parseFloat(item.price);
+            }
+          });
+          
+          if (soldCount > 0) {
+            const avgOrderValue = totalSalesValue / soldCount;
+            document.getElementById('avgOrderValue').textContent = `$${avgOrderValue.toFixed(2)}`;
+          } else {
+            document.getElementById('avgOrderValue').textContent = 'N/A';
+          }
+        } else {
+          document.getElementById('avgOrderValue').textContent = 'N/A';
+        }
+        
+        // Attempt to fetch return rate from API or calculate
+        try {
+          const returnsResponse = await fetch('/api/admin/returns');
+          if (returnsResponse.ok) {
+            const returnsData = await returnsResponse.json();
+            if (returnsData.success && returnsData.returnRate !== undefined) {
+              document.getElementById('returnRate').textContent = `${returnsData.returnRate.toFixed(1)}%`;
+            } else if (returnsData.success && returnsData.returns && soldCount > 0) {
+              const returnRate = (returnsData.returns.length / soldCount) * 100;
+              document.getElementById('returnRate').textContent = `${returnRate.toFixed(1)}%`;
+            } else {
+              document.getElementById('returnRate').textContent = '0%';
+            }
+          } else {
+            document.getElementById('returnRate').textContent = '0%';
+          }
+        } catch (error) {
+          console.error('Error fetching returns data:', error);
+          document.getElementById('returnRate').textContent = '0%';
+        }
+        
+        // Calculate user retention
+        try {
+          const retentionResponse = await fetch('/api/admin/analytics/retention');
+          if (retentionResponse.ok) {
+            const retentionData = await retentionResponse.json();
+            if (retentionData.success && retentionData.retention !== undefined) {
+              document.getElementById('userRetention').textContent = `${retentionData.retention.toFixed(1)}%`;
+            } else {
+              document.getElementById('userRetention').textContent = 'N/A';
+            }
+          } else {
+            document.getElementById('userRetention').textContent = 'N/A';
+          }
+        } catch (error) {
+          console.error('Error fetching retention data:', error);
+          document.getElementById('userRetention').textContent = 'N/A';
+        }
+        
+        // Calculate average rating
+        try {
+          const ratingsResponse = await fetch('/api/admin/ratings');
+          if (ratingsResponse.ok) {
+            const ratingsData = await ratingsResponse.json();
+            if (ratingsData.success && ratingsData.ratings && ratingsData.ratings.length > 0) {
+              let totalRating = 0;
+              ratingsData.ratings.forEach(rating => {
+                totalRating += rating.value;
+              });
+              const avgRating = totalRating / ratingsData.ratings.length;
+              document.getElementById('avgRating').textContent = avgRating.toFixed(1);
+            } else {
+              document.getElementById('avgRating').textContent = 'N/A';
+            }
+          } else {
+            document.getElementById('avgRating').textContent = 'N/A';
+          }
+        } catch (error) {
+          console.error('Error fetching ratings data:', error);
+          document.getElementById('avgRating').textContent = 'N/A';
+        }
+        
+        // Calculate mobile usage
+        try {
+          const analyticsResponse = await fetch('/api/admin/analytics/platform-usage');
+          if (analyticsResponse.ok) {
+            const analyticsData = await analyticsResponse.json();
+            if (analyticsData.success && analyticsData.mobile !== undefined) {
+              document.getElementById('mobileUsage').textContent = `${analyticsData.mobile.toFixed(1)}%`;
+            } else {
+              document.getElementById('mobileUsage').textContent = 'N/A';
+            }
+          } else {
+            document.getElementById('mobileUsage').textContent = 'N/A';
+          }
+        } catch (error) {
+          console.error('Error fetching platform usage data:', error);
+          document.getElementById('mobileUsage').textContent = 'N/A';
+        }
+        
+      } catch (error) {
+        console.error('Error calculating KPI data:', error);
+        // Set all to N/A if calculation fails
+        document.getElementById('avgListingTime').textContent = 'N/A';
+        document.getElementById('avgOrderValue').textContent = 'N/A';
+        document.getElementById('returnRate').textContent = 'N/A';
+        document.getElementById('userRetention').textContent = 'N/A';
+        document.getElementById('avgRating').textContent = 'N/A';
+        document.getElementById('mobileUsage').textContent = 'N/A';
       }
     }
     
