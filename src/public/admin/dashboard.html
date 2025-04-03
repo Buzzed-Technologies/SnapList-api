@@ -589,6 +589,18 @@
         <div class="stat-value" id="completedSales">678</div>
         <div class="stat-change positive" id="salesChange">↑ 15.3% from last month</div>
       </div>
+      
+      <div class="stat-card">
+        <div class="stat-title">Avg. Time to Sell</div>
+        <div class="stat-value" id="avgListingTime">-</div>
+        <div class="stat-change">Days</div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-title">Avg. Order Value</div>
+        <div class="stat-value" id="avgOrderValue">-</div>
+        <div class="stat-change">Per Sale</div>
+      </div>
     </div>
     
     <!-- Revenue Trend Chart (Full Width) -->
@@ -597,7 +609,7 @@
         <div class="chart-title">Revenue Trends</div>
         <div class="chart-controls">
           <input type="text" id="revenueDateRange" class="time-filter" value="Last 30 Days" readonly>
-      </div>
+        </div>
       </div>
       <div id="revenueChart" class="chart-canvas"></div>
     </div>
@@ -615,11 +627,11 @@
               <option value="quarter">This Quarter</option>
               <option value="year">This Year</option>
             </select>
-      </div>
-      </div>
+          </div>
+        </div>
         <div id="categoryChart" class="chart-canvas"></div>
-    </div>
-    
+      </div>
+      
       <!-- Active Listings Chart -->
       <div class="chart-container">
         <div class="chart-header">
@@ -630,7 +642,7 @@
               <option value="month" selected>This Month</option>
               <option value="quarter">This Quarter</option>
             </select>
-      </div>
+          </div>
         </div>
         <div id="listingsChart" class="chart-canvas"></div>
       </div>
@@ -663,21 +675,6 @@
           </div>
         </div>
         <div id="topSellingChart" class="chart-canvas"></div>
-      </div>
-    </div>
-    
-    <!-- Key Performance Indicators -->
-    <div class="data-grid">
-      <div class="data-card">
-        <div class="data-icon">⏱️</div>
-        <div class="data-value" id="avgListingTime">-</div>
-        <div class="data-label">Avg. Time to Sell</div>
-      </div>
-      
-      <div class="data-card">
-        <div class="data-icon">💰</div>
-        <div class="data-value" id="avgOrderValue">-</div>
-        <div class="data-label">Avg. Order Value</div>
       </div>
     </div>
   </main>
