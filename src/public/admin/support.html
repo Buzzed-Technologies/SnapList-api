@@ -696,8 +696,10 @@
       document.getElementById('currentDate').textContent = date.toLocaleDateString('en-US', options);
     }
     
-    // Chat Management
+    // Use global variables for chat state
     let currentChatId = null;
+    let currentConversationId = null;
+    let chatRefreshInterval = null;
     let currentFilter = 'all';
     let currentSearch = '';
     let chatData = [];
@@ -1126,6 +1128,393 @@
       displayCurrentDate();
       fetchSupportChats();
     });
+
+    // Add these functions after the existing JavaScript code
+
+    // Start the auto-refresh when a chat is being viewed
+    function startChatRefresh() {
+        // Clear any existing interval first
+        stopChatRefresh();
+        
+        // Start a new interval if we have a conversation ID
+        if (currentConversationId) {
+            chatRefreshInterval = setInterval(() => {
+                refreshCurrentChat();
+            }, 5000); // Refresh every 5 seconds
+        }
+    }
+
+    // Stop the auto-refresh
+    function stopChatRefresh() {
+        if (chatRefreshInterval) {
+            clearInterval(chatRefreshInterval);
+            chatRefreshInterval = null;
+        }
+    }
+
+    // Refresh the current chat
+    function refreshCurrentChat() {
+        if (!currentConversationId) return;
+        
+        // Show a subtle loading indicator
+        const chatContainer = document.querySelector('#chatMessages');
+        const loadingIndicator = document.createElement('div');
+        loadingIndicator.id = 'chatRefreshIndicator';
+        loadingIndicator.innerHTML = '<div class="spinner-border spinner-border-sm text-secondary" role="status"><span class="visually-hidden">Refreshing...</span></div>';
+        loadingIndicator.style.position = 'absolute';
+        loadingIndicator.style.top = '10px';
+        loadingIndicator.style.right = '10px';
+        loadingIndicator.style.opacity = '0.5';
+        
+        // Remove any existing indicator
+        const existingIndicator = document.querySelector('#chatRefreshIndicator');
+        if (existingIndicator) {
+            existingIndicator.remove();
+        }
+        
+        chatContainer.appendChild(loadingIndicator);
+        
+        // Fetch the conversation
+        fetch(`/api/admin/support-chats/conversation/${currentConversationId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Only update if we have new messages
+                    const currentMessageCount = document.querySelectorAll('.chat-message').length;
+                    if (data.messages.length > currentMessageCount / 2) { // Divide by 2 because we show user and AI as separate messages
+                        displayChatMessages(data.messages);
+                    }
+                }
+                // Remove the loading indicator
+                const indicator = document.querySelector('#chatRefreshIndicator');
+                if (indicator) {
+                    indicator.remove();
+                }
+            })
+            .catch(error => {
+                console.error('Error refreshing chat:', error);
+                // Remove the loading indicator
+                const indicator = document.querySelector('#chatRefreshIndicator');
+                if (indicator) {
+                    indicator.remove();
+                }
+            });
+    }
+
+    // Toggle AI response visibility for the current chat
+    function toggleAiResponse() {
+        if (!currentChatId) return;
+        
+        // Show loading state on button
+        const toggleButton = document.querySelector('#toggleAiButton');
+        const originalText = toggleButton.textContent;
+        toggleButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Updating...';
+        toggleButton.disabled = true;
+        
+        // Call API to toggle AI response visibility
+        fetch(`/api/admin/support-chats/${currentChatId}/toggle-ai`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Refresh the chat display
+                    if (currentConversationId) {
+                        refreshCurrentChat();
+                    } else {
+                        // This is a legacy chat, just reload
+                        fetchChat(currentChatId);
+                    }
+                    // Update button text
+                    toggleButton.textContent = data.chat.hide_ai_response ? 'Show AI Response' : 'Hide AI Response';
+                } else {
+                    showAlert('error', 'Failed to toggle AI response');
+                    toggleButton.textContent = originalText;
+                }
+                toggleButton.disabled = false;
+            })
+            .catch(error => {
+                console.error('Error toggling AI response:', error);
+                showAlert('error', 'Failed to toggle AI response');
+                toggleButton.textContent = originalText;
+                toggleButton.disabled = false;
+            });
+    }
+
+    // Modify the existing fetchChat function
+    function fetchChat(id) {
+        // Reset variables for new chat
+        currentChatId = id;
+        currentConversationId = null;
+        
+        // Stop any existing refresh interval
+        stopChatRefresh();
+        
+        // Show loading state
+        const chatContainer = document.querySelector('#chatDetails');
+        chatContainer.innerHTML = '<div class="d-flex justify-content-center my-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+        
+        // Clear form
+        document.querySelector('#adminResponse').value = '';
+        
+        // Show chat panel
+        document.querySelector('#chatPanel').classList.remove('d-none');
+        
+        fetch(`/api/admin/support-chats/${id}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const chat = data.chat;
+                    currentConversationId = chat.conversation_id;
+                    
+                    // If we have a conversation ID, fetch all messages for this conversation
+                    if (currentConversationId) {
+                        fetch(`/api/admin/support-chats/conversation/${currentConversationId}`)
+                            .then(response => response.json())
+                            .then(convData => {
+                                if (convData.success) {
+                                    displayChatMessages(convData.messages);
+                                    // Start auto-refresh for this conversation
+                                    startChatRefresh();
+                                } else {
+                                    displaySingleChat(chat);
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error fetching conversation:', error);
+                                displaySingleChat(chat);
+                            });
+                    } else {
+                        // Legacy chat without conversation
+                        displaySingleChat(chat);
+                    }
+                    
+                    // Update buttons based on status
+                    updateActionButtons(chat);
+                } else {
+                    chatContainer.innerHTML = '<div class="alert alert-danger">Failed to load chat</div>';
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching chat:', error);
+                chatContainer.innerHTML = '<div class="alert alert-danger">Error loading chat: ' + error.message + '</div>';
+            });
+    }
+
+    // Display a conversation with multiple messages
+    function displayChatMessages(messages) {
+        if (!messages || messages.length === 0) return;
+        
+        const chatContainer = document.querySelector('#chatDetails');
+        const userName = messages[0].users?.name || 'Customer';
+        
+        // Prepare header
+        let content = `
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5>Conversation with ${userName}</h5>
+                <div class="btn-group">
+                    <button id="toggleAiButton" class="btn btn-outline-secondary btn-sm" onclick="toggleAiResponse()">
+                        ${messages[0].hide_ai_response ? 'Show AI Response' : 'Hide AI Response'}
+                    </button>
+                </div>
+            </div>
+            <div id="chatMessages" class="border rounded p-3 mb-3 bg-light" style="max-height: 400px; overflow-y: auto;">
+        `;
+        
+        // Add each message
+        messages.forEach(msg => {
+            // User message
+            content += `
+                <div class="chat-message mb-2">
+                    <strong class="text-primary">Customer:</strong>
+                    <div class="border rounded p-2 bg-white">${msg.message}</div>
+                </div>
+            `;
+            
+            // AI response (conditionally show based on hide_ai_response flag)
+            if (!msg.hide_ai_response) {
+                content += `
+                    <div class="chat-message mb-2 ms-4">
+                        <strong class="text-info">AI Response:</strong>
+                        <div class="border rounded p-2 bg-white">${msg.ai_response}</div>
+                    </div>
+                `;
+            }
+            
+            // Admin response (if it exists)
+            if (msg.admin_response) {
+                content += `
+                    <div class="chat-message mb-2 ms-4">
+                        <strong class="text-success">Support Team:</strong>
+                        <div class="border rounded p-2 bg-white">${msg.admin_response}</div>
+                    </div>
+                `;
+            }
+        });
+        
+        content += '</div>';
+        
+        // Add info and response form
+        const latestMessage = messages[messages.length - 1];
+        content += `
+            <div class="card mb-3">
+                <div class="card-header">
+                    <strong>Message Details</strong>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-4"><strong>Customer:</strong></div>
+                        <div class="col-md-8">${latestMessage.users?.name || 'Unknown'}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-4"><strong>Status:</strong></div>
+                        <div class="col-md-8"><span class="badge bg-${getStatusBadgeColor(latestMessage.status)}">${latestMessage.status}</span></div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-4"><strong>Created:</strong></div>
+                        <div class="col-md-8">${new Date(latestMessage.created_at).toLocaleString()}</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <strong>Respond to Customer</strong>
+                </div>
+                <div class="card-body">
+                    <form id="responseForm" onsubmit="sendAdminReply('${latestMessage.id}'); return false;">
+                        <div class="mb-3">
+                            <textarea id="adminResponse" class="form-control" rows="3" placeholder="Type your response..." required></textarea>
+                        </div>
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button type="submit" class="btn btn-primary">Send Reply</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        `;
+        
+        chatContainer.innerHTML = content;
+        
+        // Scroll to the bottom of the chat messages
+        const messagesContainer = document.querySelector('#chatMessages');
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    // Display a single chat (for legacy support)
+    function displaySingleChat(chat) {
+        const chatContainer = document.querySelector('#chatDetails');
+        
+        let content = `
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5>Chat with ${chat.users?.name || 'Customer'}</h5>
+                <div class="btn-group">
+                    <button id="toggleAiButton" class="btn btn-outline-secondary btn-sm" onclick="toggleAiResponse()">
+                        ${chat.hide_ai_response ? 'Show AI Response' : 'Hide AI Response'}
+                    </button>
+                </div>
+            </div>
+            <div id="chatMessages" class="border rounded p-3 mb-3 bg-light" style="max-height: 400px; overflow-y: auto;">
+                <div class="chat-message mb-2">
+                    <strong class="text-primary">Customer:</strong>
+                    <div class="border rounded p-2 bg-white">${chat.message}</div>
+                </div>
+        `;
+        
+        // AI response (conditionally show based on hide_ai_response flag)
+        if (!chat.hide_ai_response) {
+            content += `
+                <div class="chat-message mb-2 ms-4">
+                    <strong class="text-info">AI Response:</strong>
+                    <div class="border rounded p-2 bg-white">${chat.ai_response}</div>
+                </div>
+            `;
+        }
+        
+        // Admin response (if it exists)
+        if (chat.admin_response) {
+            content += `
+                <div class="chat-message mb-2 ms-4">
+                    <strong class="text-success">Support Team:</strong>
+                    <div class="border rounded p-2 bg-white">${chat.admin_response}</div>
+                </div>
+            `;
+        }
+        
+        content += '</div>';
+        
+        // Add rest of the chat details
+        content += `
+            <div class="card mb-3">
+                <div class="card-header">
+                    <strong>Message Details</strong>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-4"><strong>Customer:</strong></div>
+                        <div class="col-md-8">${chat.users?.name || 'Unknown'}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-4"><strong>Status:</strong></div>
+                        <div class="col-md-8"><span class="badge bg-${getStatusBadgeColor(chat.status)}">${chat.status}</span></div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-4"><strong>Created:</strong></div>
+                        <div class="col-md-8">${new Date(chat.created_at).toLocaleString()}</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <strong>Respond to Customer</strong>
+                </div>
+                <div class="card-body">
+                    <form id="responseForm" onsubmit="sendAdminReply('${chat.id}'); return false;">
+                        <div class="mb-3">
+                            <textarea id="adminResponse" class="form-control" rows="3" placeholder="Type your response..." required></textarea>
+                        </div>
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button type="submit" class="btn btn-primary">Send Reply</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        `;
+        
+        chatContainer.innerHTML = content;
+    }
+
+    // Handle page visibility changes
+    document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'visible') {
+            // Resume refreshing if viewing a conversation
+            if (currentConversationId) {
+                startChatRefresh();
+            }
+        } else {
+            // Pause refreshing when tab is not visible
+            stopChatRefresh();
+        }
+    });
+
+    // Clean up when navigating away
+    window.addEventListener('beforeunload', function() {
+        stopChatRefresh();
+    });
+
+    // Helper function to get badge color based on status
+    function getStatusBadgeColor(status) {
+        switch (status) {
+            case 'pending': return 'warning';
+            case 'responded': return 'success';
+            case 'resolved': return 'info';
+            default: return 'secondary';
+        }
+    }
   </script>
 </body>
 </html> 

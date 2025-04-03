@@ -942,6 +942,45 @@ router.get('/support-chats/:id', async (req, res) => {
 });
 
 /**
+ * @api {get} /api/admin/support-chats/conversation/:conversationId Get all messages in a conversation
+ * @apiDescription Get all messages in a specific conversation
+ * @apiName GetConversation
+ * @apiGroup Admin
+ * 
+ * @apiParam {String} conversationId Conversation ID
+ * 
+ * @apiSuccess {Object[]} messages Array of messages in the conversation
+ */
+router.get('/support-chats/conversation/:conversationId', async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    
+    // Get all messages in this conversation
+    const { data: messages, error } = await supabase
+      .from('support_chats')
+      .select(`
+        *,
+        users(name, phone)
+      `)
+      .eq('conversation_id', conversationId)
+      .order('created_at', { ascending: true });
+    
+    if (error) throw error;
+    
+    res.json({
+      success: true,
+      messages
+    });
+  } catch (error) {
+    console.error(`Error fetching conversation ${req.params.conversationId}:`, error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch conversation'
+    });
+  }
+});
+
+/**
  * @api {post} /api/admin/support-chats/:id/respond Respond to a support chat
  * @apiDescription Admin response to a support chat
  * @apiName RespondToSupportChat
@@ -988,6 +1027,59 @@ router.post('/support-chats/:id/respond', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to send response'
+    });
+  }
+});
+
+/**
+ * @api {put} /api/admin/support-chats/:id/toggle-ai Toggle AI response visibility
+ * @apiDescription Toggle whether to show the AI response for a support chat
+ * @apiName ToggleAiResponse
+ * @apiGroup Admin
+ * 
+ * @apiParam {String} id Support chat ID
+ * 
+ * @apiSuccess {Boolean} success Indicates if the toggle was successful
+ */
+router.put('/support-chats/:id/toggle-ai', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // First, get the current state
+    const { data: chat, error: getError } = await supabase
+      .from('support_chats')
+      .select('hide_ai_response')
+      .eq('id', id)
+      .single();
+    
+    if (getError) throw getError;
+    
+    // Toggle the value
+    const hideAiResponse = !chat.hide_ai_response;
+    
+    // Update the record
+    const { data: updatedChat, error } = await supabase
+      .from('support_chats')
+      .update({ 
+        hide_ai_response: hideAiResponse,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    
+    res.json({
+      success: true,
+      message: `AI response ${hideAiResponse ? 'hidden' : 'visible'}`,
+      chat: updatedChat
+    });
+  } catch (error) {
+    console.error('Error toggling AI response:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to toggle AI response'
     });
   }
 });
