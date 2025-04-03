@@ -1286,8 +1286,13 @@
           
           // Get the image URL or use a placeholder
           const imageUrl = item.image_url 
-            ? `https://lsrdviupiuoztnccwdxk.supabase.co/storage/v1/object/public/snaplist-images/uploads/${item.image_url}` 
+            ? (item.image_url.startsWith('http')
+                ? item.image_url
+                : `https://lsrdviupiuoztnccwdxk.supabase.co/storage/v1/object/public/snaplist-images/${item.image_url}`)
             : '/img/logo.png';
+          
+          // Log image URL for debugging
+          console.log('Payout item image URL:', imageUrl);
           
           itemEl.innerHTML = `
             <img src="${imageUrl}" alt="${item.title || 'Item'}" class="item-thumbnail" onerror="this.src='/img/logo.png'">

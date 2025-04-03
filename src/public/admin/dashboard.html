@@ -701,7 +701,26 @@
           document.querySelectorAll('#pendingPayouts .action-view').forEach(button => {
             button.addEventListener('click', function() {
               const payoutId = this.getAttribute('data-id');
-              window.location.href = `/admin/payouts.html?id=${payoutId}`;
+              try {
+                // Check if the payout ID exists first
+                fetch(`/api/admin/payouts/${payoutId}`)
+                  .then(response => {
+                    if (response.ok) {
+                      window.location.href = `/admin/payouts.html?id=${payoutId}`;
+                    } else {
+                      // Show an error message if the payout doesn't exist
+                      alert('Could not find payout details. It may have been already processed.');
+                      fetchPendingPayouts(); // Refresh the list
+                    }
+                  })
+                  .catch(err => {
+                    console.error('Error checking payout:', err);
+                    alert('Error checking payout. Please try again later.');
+                  });
+              } catch (error) {
+                console.error('Error navigating to payout:', error);
+                alert('Could not navigate to payout details. Please try again.');
+              }
             });
           });
         } else {

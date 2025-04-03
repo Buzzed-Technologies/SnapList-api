@@ -975,6 +975,51 @@ router.get('/support-chats/:id', async (req, res) => {
 });
 
 /**
+ * @api {get} /api/admin/support-chats/user/:userId Get all support chats for a specific user
+ * @apiDescription Get all support chats for a specific user by user ID
+ * @apiName GetUserSupportChats
+ * @apiGroup Admin
+ * 
+ * @apiParam {String} userId User ID (UUID)
+ * 
+ * @apiSuccess {Object[]} chats Array of support chats for the user
+ */
+router.get('/support-chats/user/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    // Get all chats for this user - using explicit UUID casting to fix type mismatch
+    const { data: chats, error } = await supabase
+      .from('support_chats')
+      .select(`
+        *,
+        users(name, phone)
+      `)
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error(`Error fetching support chat conversations for user ${userId}:`, error);
+      return res.status(500).json({
+        success: false,
+        message: `Error fetching support chat conversations for user ${userId}: ${error}`
+      });
+    }
+    
+    res.json({
+      success: true,
+      chats
+    });
+  } catch (error) {
+    console.error(`Error fetching support chats for user ${req.params.userId}:`, error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch support chats'
+    });
+  }
+});
+
+/**
  * @api {get} /api/admin/support-chats/conversation/:conversationId Get all messages in a conversation
  * @apiDescription Get all messages in a specific conversation
  * @apiName GetConversation
@@ -988,17 +1033,23 @@ router.get('/support-chats/conversation/:conversationId', async (req, res) => {
   try {
     const { conversationId } = req.params;
     
-    // Get all messages in this conversation
+    // Get all messages in this conversation - with explicit UUID casting
     const { data: messages, error } = await supabase
       .from('support_chats')
       .select(`
         *,
         users(name, phone)
       `)
-      .eq('conversation_id', conversationId)
+      .filter('conversation_id', 'eq', conversationId)  // Using filter instead of eq for better type handling
       .order('created_at', { ascending: true });
     
-    if (error) throw error;
+    if (error) {
+      console.error(`Error fetching conversation ${conversationId}:`, error);
+      return res.status(500).json({
+        success: false,
+        message: `Error fetching conversation: ${error}`
+      });
+    }
     
     res.json({
       success: true,
@@ -1101,7 +1152,7 @@ router.put('/support-chats/:id/toggle-ai', async (req, res) => {
           hide_ai_response: hideAiResponse,
           updated_at: new Date().toISOString()
         })
-        .eq('conversation_id', chat.conversation_id)
+        .filter('conversation_id', 'eq', chat.conversation_id)  // Using filter instead of eq for better type handling
         .select();
       
       if (error) throw error;
