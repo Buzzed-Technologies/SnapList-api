@@ -264,13 +264,11 @@ router.post('/:id/chat/support', async (req, res) => {
         // Ask why they need a human agent first
         aiResponse = "I'd be happy to connect you with a human agent. To help us route your request properly, could you please tell me what specific issue you're trying to resolve? I might be able to help you directly.";
       } else {
-        // Process the message with OpenAI
-        const response = await openai.chat.completions.create({
-          model: "gpt-3.5-turbo",
-          messages: [
-            {
-              role: "system",
-              content: `You are a friendly and helpful support assistant for SnapList, a super cool app that helps people list items for sale on marketplaces like eBay and Facebook Marketplace!
+        // Prepare messages array for OpenAI with system message
+        const messages = [
+          {
+            role: "system",
+            content: `You are a friendly and helpful support assistant for SnapList, a super cool app that helps people list items for sale on marketplaces like eBay and Facebook Marketplace!
 
 The app lets you:
 - Snap photos of items you want to sell
@@ -341,12 +339,55 @@ Try your best to answer questions with a friendly, helpful vibe. Keep it light a
 If you absolutely need to get a human involved, say: "I'll escalate this to our support team, and someone will review your message soon!"
 
 Remember: Never share outside contact info or emails. Keep the conversation right here in the app!`
-            },
-            {
-              role: "user",
-              content: message
-            }
-          ],
+          }
+        ];
+        
+        // If conversation_id is provided, get previous messages to build context
+        if (conversation_id) {
+          // Fetch previous messages in this conversation
+          const { data: previousMessages, error: historyError } = await supabase
+            .from('support_chats')
+            .select('message, ai_response, admin_response')
+            .eq('conversation_id', conversation_id)
+            .eq('user_id', id)
+            .order('created_at', { ascending: true })
+            .limit(10); // Limit to last 10 messages for context
+          
+          if (!historyError && previousMessages && previousMessages.length > 0) {
+            // Add previous messages to the conversation context
+            previousMessages.forEach(msg => {
+              // Add user message
+              messages.push({
+                role: "user",
+                content: msg.message
+              });
+              
+              // Add AI or admin response (prefer admin response if available)
+              if (msg.admin_response) {
+                messages.push({
+                  role: "assistant",
+                  content: msg.admin_response
+                });
+              } else if (msg.ai_response) {
+                messages.push({
+                  role: "assistant",
+                  content: msg.ai_response
+                });
+              }
+            });
+          }
+        }
+        
+        // Add the current user message
+        messages.push({
+          role: "user",
+          content: message
+        });
+        
+        // Process the message with OpenAI
+        const response = await openai.chat.completions.create({
+          model: "gpt-3.5-turbo",
+          messages: messages,
           max_tokens: 500
         });
         
