@@ -233,6 +233,7 @@ router.post('/:id/chat/support', async (req, res) => {
         // Return success with no AI response since this is now waiting for admin
         return res.status(200).json({
           success: true,
+          response: "",
           chatId: chatData[0].id,
           conversationId: chatData[0].conversation_id,
           escalated: true,

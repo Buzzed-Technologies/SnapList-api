@@ -764,6 +764,22 @@
       transform: translateY(0);
     }
     
+    /* Notification pulse animation */
+    @keyframes pulse {
+      0% {
+        transform: translateY(0) scale(1);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+      50% {
+        transform: translateY(0) scale(1.05);
+        box-shadow: 0 8px 24px rgba(255, 59, 48, 0.4);
+      }
+      100% {
+        transform: translateY(0) scale(1);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+    }
+    
     /* Refresh spinner */
     .refresh-spinner {
       width: 16px;
@@ -2045,6 +2061,9 @@
         
         // We need to prime the audio API on first user interaction
         const unlockAudio = () => {
+          // Mark the document as having received user interaction
+          document.documentElement.setAttribute('data-user-interacted', 'true');
+          
           // Create and play a silent sound first - use a known working silent MP3
           const silentSound = new Audio("data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//uQZAAP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAETEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVU=");
           silentSound.volume = 0.1; // Very low volume
@@ -2104,6 +2123,16 @@
       }
       
       try {
+        // Check if the user has interacted with the document
+        const hasInteracted = document.documentElement.hasAttribute('data-user-interacted');
+        
+        if (!hasInteracted) {
+          // If no interaction yet, just show a more noticeable visual notification
+          console.log('Audio not allowed yet - showing visual notification instead');
+          showVisualNotification();
+          return;
+        }
+        
         // Clone the audio node for better playback reliability
         const soundToPlay = notificationSound.cloneNode();
         
@@ -2113,15 +2142,49 @@
         }).catch(error => {
           console.warn('Error playing notification sound:', error);
           
-          // Only attempt to create a new audio instance if it was a NotAllowedError
+          // If we get NotAllowedError, show a visual notification instead
           if (error.name === 'NotAllowedError') {
-            // User hasn't interacted yet, just log it
-            console.log('Audio not allowed yet - waiting for user interaction');
+            console.log('Audio not allowed yet - showing visual notification instead');
+            showVisualNotification();
           }
         });
       } catch (error) {
         console.error('Error in playNotificationSound:', error);
+        // Fall back to visual notification
+        showVisualNotification();
       }
+    }
+    
+    // Show a more noticeable visual notification when audio can't be played
+    function showVisualNotification() {
+      // Create notification element if it doesn't exist
+      let notification = document.getElementById('notification');
+      if (!notification) {
+        notification = document.createElement('div');
+        notification.id = 'notification';
+        notification.className = 'notification';
+        document.body.appendChild(notification);
+      }
+      
+      // Make it more attention-grabbing when audio can't play
+      notification.style.backgroundColor = '#FF3B30';
+      notification.style.boxShadow = '0 0 20px rgba(255, 59, 48, 0.5)';
+      notification.style.animation = 'pulse 2s infinite';
+      
+      // Set notification message and show it
+      notification.textContent = '🔔 New escalated chat requires attention!';
+      notification.classList.add('show');
+      
+      // Hide after 8 seconds (longer than normal)
+      setTimeout(() => {
+        notification.classList.remove('show');
+        // Reset styles
+        setTimeout(() => {
+          notification.style.backgroundColor = '';
+          notification.style.boxShadow = '';
+          notification.style.animation = '';
+        }, 300);
+      }, 8000);
     }
 
     // Initialize a fallback notification sound using a base64 encoded sound
