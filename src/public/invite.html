@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SnapList Invite</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/png" href="/static/img/logo.png">
+  <style>
+    .invite-container {
+      background-color: var(--card-background);
+      border-radius: 16px;
+      box-shadow: 0 6px 12px var(--shadow-color);
+      padding: 24px;
+      margin-bottom: 40px;
+      text-align: center;
+    }
+    
+    .invite-header {
+      margin-bottom: 30px;
+    }
+    
+    .invite-header h2 {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--primary-color);
+      margin-bottom: 15px;
+    }
+    
+    .invite-header p {
+      font-size: 1.1rem;
+      color: var(--text-secondary);
+      max-width: 600px;
+      margin: 0 auto 20px;
+      line-height: 1.6;
+    }
+    
+    .app-logo {
+      width: 120px;
+      height: 120px;
+      margin: 0 auto 30px;
+      border-radius: 24px;
+      box-shadow: 0 6px 12px var(--shadow-color);
+    }
+    
+    .download-button {
+      display: inline-block;
+      margin: 20px auto;
+      transition: transform 0.2s ease;
+    }
+    
+    .download-button:hover {
+      transform: scale(1.03);
+    }
+    
+    .download-button img {
+      height: 60px;
+    }
+    
+    .features-section {
+      margin-top: 40px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+    
+    .feature-card {
+      padding: 20px;
+      background-color: rgba(0, 0, 0, 0.02);
+      border-radius: 12px;
+      text-align: center;
+    }
+    
+    @media (prefers-color-scheme: dark) {
+      .feature-card {
+        background-color: rgba(255, 255, 255, 0.05);
+      }
+    }
+    
+    .feature-icon {
+      font-size: 2rem;
+      color: var(--primary-color);
+      margin-bottom: 15px;
+    }
+    
+    .feature-title {
+      font-weight: 600;
+      margin-bottom: 10px;
+      color: var(--text-primary);
+    }
+    
+    .feature-desc {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+    
+    @media (max-width: 768px) {
+      .features-section {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">
+        <img src="/static/img/logo.png" alt="SnapList Logo">
+        <h1>SnapList</h1>
+      </div>
+    </header>
+
+    <main>
+      <div class="invite-container">
+        <div class="invite-header">
+          <img src="/static/img/logo.png" alt="SnapList App" class="app-logo">
+          <h2>You've been invited to SnapList!</h2>
+          <p>Snap, List, and Sell with ease. Join thousands of users who are simplifying the way they sell their items online.</p>
+        </div>
+        
+        <a href="https://apps.apple.com/us/app/snaplist-snap-list-sell/id6744180992" class="download-button" target="_blank" rel="noopener noreferrer">
+          <img src="/static/img/app-store-badge.svg" alt="Download on the App Store">
+        </a>
+        
+        <div class="features-section">
+          <div class="feature-card">
+            <div class="feature-icon">📸</div>
+            <h3 class="feature-title">Easy Listing</h3>
+            <p class="feature-desc">Take a photo and let our app do the rest. Creating listings has never been this simple.</p>
+          </div>
+          
+          <div class="feature-card">
+            <div class="feature-icon">💰</div>
+            <h3 class="feature-title">Quick Payments</h3>
+            <p class="feature-desc">Get paid fast with secure payment processing directly to your preferred payment method.</p>
+          </div>
+          
+          <div class="feature-card">
+            <div class="feature-icon">🔄</div>
+            <h3 class="feature-title">Multi-Platform</h3>
+            <p class="feature-desc">List once and sell everywhere. We help you reach more buyers across marketplaces.</p>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      <p>Powered by SnapList</p>
+    </footer>
+  </div>
+</body>
+</html> 

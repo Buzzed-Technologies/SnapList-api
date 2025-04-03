@@ -58,6 +58,24 @@ app.get('/share/listing/html', (req, res) => {
   }
 });
 
+// Add route for invite page
+app.get('/invite', (req, res) => {
+  try {
+    const htmlPath = path.join(publicPath, 'invite.html');
+    console.log('Serving Invite page from:', htmlPath);
+    
+    if (fs.existsSync(htmlPath)) {
+      res.sendFile(htmlPath);
+    } else {
+      console.error('Invite page not found at path:', htmlPath);
+      res.status(404).send('Invite page not found');
+    }
+  } catch (error) {
+    console.error('Error serving invite page:', error);
+    res.status(500).send('Error loading invite page');
+  }
+});
+
 // Add routes for terms of service and privacy policy
 app.get('/terms', (req, res) => {
   try {
