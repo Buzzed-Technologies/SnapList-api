@@ -3,6 +3,8 @@ const { supabase } = require('../config/supabase');
 const router = express.Router();
 const { getUserById } = require('../utils/user');
 const axios = require('axios');
+const { v4: uuidv4 } = require('uuid');
+const { requireAuth, requireAdmin } = require('../middleware/auth');
 
 // eBay API Configuration
 const EBAY_CONFIG = {
@@ -830,186 +832,207 @@ router.post('/payouts/:id/process', async (req, res) => {
 });
 
 /**
- * @api {get} /api/admin/support-chats Get all support chats
- * @apiDescription Get a paginated list of all support chats
- * @apiName GetSupportChats
+ * @api {get} /api/admin/support-conversations Get all support conversations
+ * @apiDescription Get a paginated list of support conversations
+ * @apiName GetSupportConversations
  * @apiGroup Admin
- * 
- * @apiParam {Number} [page=1] Page number
- * @apiParam {Number} [limit=10] Number of chats per page
- * @apiParam {String} [status] Filter by chat status
- * @apiParam {String} [sort_by=created_at] Field to sort by
- * @apiParam {String} [sort_dir=desc] Sort direction (asc or desc)
- * 
- * @apiSuccess {Object[]} chats Array of support chats
- * @apiSuccess {Number} count Total count of chats
  */
-router.get('/support-chats', async (req, res) => {
+router.get('/support-conversations', requireAuth, requireAdmin, async (req, res) => {
   try {
-    const { 
-      page = 1, 
-      limit = 10, 
-      status = '',
-      sort_by = 'created_at', 
-      sort_dir = 'desc' 
-    } = req.query;
-    
-    // Calculate offset for pagination
+    const { page = 1, limit = 20, status, sort = 'latest' } = req.query;
     const offset = (page - 1) * limit;
     
-    // Start building query
+    // Build the query
     let query = supabase
-      .from('support_chats')
+      .from('support_conversations')
       .select(`
         *,
-        users(name)
+        users:user_id (
+          name
+        )
       `, { count: 'exact' });
     
-    // Add status filter if provided
-    if (status && status !== 'all') {
+    // Apply status filter if provided
+    if (status) {
       query = query.eq('status', status);
     }
     
-    // Add sorting
-    query = query.order(sort_by, { ascending: sort_dir === 'asc' });
+    // Apply sorting
+    if (sort === 'latest') {
+      query = query.order('last_message_at', { ascending: false });
+    } else if (sort === 'oldest') {
+      query = query.order('last_message_at', { ascending: true });
+    }
     
-    // Add pagination
+    // Apply pagination
     query = query.range(offset, offset + limit - 1);
     
-    // Execute query
-    const { data: chats, count, error } = await query;
+    // Execute the query
+    const { data, error, count } = await query;
     
     if (error) throw error;
     
-    res.json({
+    // Format the response
+    const formattedConversations = data.map(conv => {
+      // Find the most recent messages of different types for preview
+      const lastUserMessage = getLastMessageByType(conv.messages, 'user');
+      const lastAdminMessage = getLastMessageByType(conv.messages, 'admin');
+      
+      return {
+        id: conv.id,
+        user_id: conv.user_id,
+        user_name: conv.users?.name || 'Unknown User',
+        title: conv.title,
+        status: conv.status,
+        created_at: conv.created_at,
+        last_message_at: conv.last_message_at,
+        message_count: conv.messages.length,
+        preview: {
+          user_message: lastUserMessage ? lastUserMessage.content.substring(0, 100) : '',
+          admin_message: lastAdminMessage ? lastAdminMessage.content.substring(0, 100) : '',
+          has_admin_response: hasAdminResponse(conv.messages)
+        }
+      };
+    });
+    
+    return res.status(200).json({
       success: true,
-      chats,
-      count
+      conversations: formattedConversations,
+      pagination: {
+        total: count,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        pages: Math.ceil(count / limit)
+      }
     });
   } catch (error) {
-    console.error('Error fetching support chats:', error);
-    res.status(500).json({
+    console.error('Error fetching support conversations:', error);
+    return res.status(500).json({
       success: false,
-      message: 'Failed to fetch support chats'
+      message: 'Server error fetching support conversations'
     });
   }
 });
 
 /**
- * @api {get} /api/admin/support-chats/:id Get a support chat
- * @apiDescription Get a specific support chat by ID
- * @apiName GetSupportChat
+ * @api {get} /api/admin/support-conversations/:id Get a specific conversation
+ * @apiDescription Get details of a specific support conversation
+ * @apiName GetSupportConversation
  * @apiGroup Admin
- * 
- * @apiParam {String} id Support chat ID
- * 
- * @apiSuccess {Object} chat Support chat details
  */
-router.get('/support-chats/:id', async (req, res) => {
+router.get('/support-conversations/:id', requireAuth, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     
-    // Get chat
-    const { data: chat, error } = await supabase
-      .from('support_chats')
+    // Get the conversation with user details
+    const { data, error } = await supabase
+      .from('support_conversations')
       .select(`
         *,
-        users(name, phone)
+        users:user_id (
+          id,
+          name,
+          email,
+          phone
+        )
       `)
       .eq('id', id)
       .single();
     
     if (error) throw error;
     
-    if (!chat) {
+    if (!data) {
       return res.status(404).json({
         success: false,
-        message: 'Support chat not found'
+        message: 'Conversation not found'
       });
     }
     
-    res.json({
+    // Format messages for easier client-side handling
+    const formattedMessages = data.messages.map(msg => ({
+      id: msg.id,
+      type: msg.type,
+      content: msg.content,
+      created_at: msg.created_at
+    }));
+    
+    return res.status(200).json({
       success: true,
-      chat
+      conversation: {
+        id: data.id,
+        title: data.title,
+        status: data.status,
+        created_at: data.created_at,
+        updated_at: data.updated_at,
+        last_message_at: data.last_message_at,
+        hide_ai_responses: data.hide_ai_responses,
+        user: {
+          id: data.users.id,
+          name: data.users.name,
+          email: data.users.email,
+          phone: data.users.phone
+        },
+        messages: formattedMessages
+      }
     });
   } catch (error) {
-    console.error('Error fetching support chat:', error);
-    res.status(500).json({
+    console.error('Error fetching support conversation:', error);
+    return res.status(500).json({
       success: false,
-      message: 'Failed to fetch support chat'
+      message: 'Server error fetching support conversation'
     });
   }
 });
 
 /**
- * @api {get} /api/admin/support-chats/conversation/:conversationId Get all messages in a conversation
- * @apiDescription Get all messages in a specific conversation
- * @apiName GetConversation
+ * @api {post} /api/admin/support-conversations/:id/respond Respond to a conversation
+ * @apiDescription Add an admin response to a support conversation
+ * @apiName RespondToConversation
  * @apiGroup Admin
- * 
- * @apiParam {String} conversationId Conversation ID
- * 
- * @apiSuccess {Object[]} messages Array of messages in the conversation
  */
-router.get('/support-chats/conversation/:conversationId', async (req, res) => {
-  try {
-    const { conversationId } = req.params;
-    
-    // Get all messages in this conversation
-    const { data: messages, error } = await supabase
-      .from('support_chats')
-      .select(`
-        *,
-        users(name, phone)
-      `)
-      .eq('conversation_id', conversationId)
-      .order('created_at', { ascending: true });
-    
-    if (error) throw error;
-    
-    res.json({
-      success: true,
-      messages
-    });
-  } catch (error) {
-    console.error(`Error fetching conversation ${req.params.conversationId}:`, error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch conversation'
-    });
-  }
-});
-
-/**
- * @api {post} /api/admin/support-chats/:id/respond Respond to a support chat
- * @apiDescription Admin response to a support chat
- * @apiName RespondToSupportChat
- * @apiGroup Admin
- * 
- * @apiParam {String} id Support chat ID
- * @apiParam {String} response Admin response message
- * 
- * @apiSuccess {Boolean} success Indicates if the operation was successful
- */
-router.post('/support-chats/:id/respond', async (req, res) => {
+router.post('/support-conversations/:id/respond', requireAuth, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { response } = req.body;
     
-    if (!response) {
+    if (!response || response.trim() === '') {
       return res.status(400).json({
         success: false,
         message: 'Response message is required'
       });
     }
     
-    // Update chat with admin response
-    const { data: chat, error } = await supabase
-      .from('support_chats')
-      .update({ 
-        admin_response: response,
+    // First get the current conversation
+    const { data: conversation, error: fetchError } = await supabase
+      .from('support_conversations')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (fetchError) throw fetchError;
+    
+    if (!conversation) {
+      return res.status(404).json({
+        success: false,
+        message: 'Conversation not found'
+      });
+    }
+    
+    // Add admin response to messages
+    const adminMessage = {
+      id: uuidv4(),
+      type: 'admin',
+      content: response,
+      created_at: new Date().toISOString()
+    };
+    
+    // Update the conversation
+    const { data, error } = await supabase
+      .from('support_conversations')
+      .update({
+        messages: [...conversation.messages, adminMessage],
         status: 'responded',
-        updated_at: new Date().toISOString()
+        last_message_at: new Date().toISOString()
       })
       .eq('id', id)
       .select()
@@ -1017,52 +1040,51 @@ router.post('/support-chats/:id/respond', async (req, res) => {
     
     if (error) throw error;
     
-    res.json({
+    return res.status(200).json({
       success: true,
-      message: 'Response sent successfully',
-      chat
+      message: 'Response added successfully',
+      conversation_id: id
     });
   } catch (error) {
-    console.error('Error responding to support chat:', error);
-    res.status(500).json({
+    console.error('Error responding to support conversation:', error);
+    return res.status(500).json({
       success: false,
-      message: 'Failed to send response'
+      message: 'Server error responding to support conversation'
     });
   }
 });
 
 /**
- * @api {put} /api/admin/support-chats/:id/toggle-ai Toggle AI response visibility
- * @apiDescription Toggle whether to show the AI response for a support chat
- * @apiName ToggleAiResponse
+ * @api {put} /api/admin/support-conversations/:id/toggle-ai Toggle AI response visibility
+ * @apiDescription Toggle whether AI responses are shown to the user
+ * @apiName ToggleAIResponses
  * @apiGroup Admin
- * 
- * @apiParam {String} id Support chat ID
- * 
- * @apiSuccess {Boolean} success Indicates if the toggle was successful
  */
-router.put('/support-chats/:id/toggle-ai', async (req, res) => {
+router.put('/support-conversations/:id/toggle-ai', requireAuth, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     
-    // First, get the current state
-    const { data: chat, error: getError } = await supabase
-      .from('support_chats')
-      .select('hide_ai_response')
+    // Get current state
+    const { data: conversation, error: fetchError } = await supabase
+      .from('support_conversations')
+      .select('hide_ai_responses')
       .eq('id', id)
       .single();
     
-    if (getError) throw getError;
+    if (fetchError) throw fetchError;
     
-    // Toggle the value
-    const hideAiResponse = !chat.hide_ai_response;
+    if (!conversation) {
+      return res.status(404).json({
+        success: false,
+        message: 'Conversation not found'
+      });
+    }
     
-    // Update the record
-    const { data: updatedChat, error } = await supabase
-      .from('support_chats')
-      .update({ 
-        hide_ai_response: hideAiResponse,
-        updated_at: new Date().toISOString()
+    // Toggle the hide_ai_responses field
+    const { data, error } = await supabase
+      .from('support_conversations')
+      .update({
+        hide_ai_responses: !conversation.hide_ai_responses
       })
       .eq('id', id)
       .select()
@@ -1070,78 +1092,91 @@ router.put('/support-chats/:id/toggle-ai', async (req, res) => {
     
     if (error) throw error;
     
-    res.json({
+    return res.status(200).json({
       success: true,
-      message: `AI response ${hideAiResponse ? 'hidden' : 'visible'}`,
-      chat: updatedChat
+      message: `AI responses are now ${data.hide_ai_responses ? 'hidden' : 'visible'}`,
+      hide_ai_responses: data.hide_ai_responses
     });
   } catch (error) {
-    console.error('Error toggling AI response:', error);
-    res.status(500).json({
+    console.error('Error toggling AI response visibility:', error);
+    return res.status(500).json({
       success: false,
-      message: 'Failed to toggle AI response'
+      message: 'Server error toggling AI response visibility'
     });
   }
 });
 
 /**
- * @api {put} /api/admin/support-chats/:id/status Update support chat status
- * @apiDescription Update the status of a support chat
- * @apiName UpdateSupportChatStatus
+ * @api {put} /api/admin/support-conversations/:id/status Update conversation status
+ * @apiDescription Update the status of a support conversation
+ * @apiName UpdateConversationStatus
  * @apiGroup Admin
- * 
- * @apiParam {String} id Support chat ID
- * @apiParam {String} status New status (pending, responded, resolved)
- * 
- * @apiSuccess {Boolean} success Indicates if the status update was successful
  */
-router.put('/support-chats/:id/status', async (req, res) => {
+router.put('/support-conversations/:id/status', requireAuth, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
     
-    if (!status) {
-      return res.status(400).json({
-        success: false,
-        message: 'Status is required'
-      });
-    }
-    
     // Validate status
-    const validStatuses = ['pending', 'responded', 'resolved'];
-    if (!validStatuses.includes(status)) {
+    if (!status || !['pending', 'responded', 'resolved'].includes(status)) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid status. Must be one of: ' + validStatuses.join(', ')
+        message: 'Invalid status. Must be one of: pending, responded, resolved'
       });
     }
     
-    // Update chat status
-    const { data: chat, error } = await supabase
-      .from('support_chats')
-      .update({ 
-        status,
-        updated_at: new Date().toISOString()
-      })
+    // Update the conversation status
+    const { data, error } = await supabase
+      .from('support_conversations')
+      .update({ status })
       .eq('id', id)
       .select()
       .single();
     
     if (error) throw error;
     
-    res.json({
+    if (!data) {
+      return res.status(404).json({
+        success: false,
+        message: 'Conversation not found'
+      });
+    }
+    
+    return res.status(200).json({
       success: true,
-      message: 'Support chat status updated successfully',
-      chat
+      message: `Conversation status updated to ${status}`,
+      conversation: {
+        id: data.id,
+        status: data.status
+      }
     });
   } catch (error) {
-    console.error('Error updating support chat status:', error);
-    res.status(500).json({
+    console.error('Error updating conversation status:', error);
+    return res.status(500).json({
       success: false,
-      message: 'Failed to update status'
+      message: 'Server error updating conversation status'
     });
   }
 });
+
+// Helper functions for support conversations
+function getLastMessageByType(messages, type) {
+  if (!messages || messages.length === 0) return null;
+  
+  // Start from the end of the array and go backwards
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].type === type) {
+      return messages[i];
+    }
+  }
+  
+  return null;
+}
+
+function hasAdminResponse(messages) {
+  if (!messages) return false;
+  return messages.some(msg => msg.type === 'admin');
+}
 
 // Export the router module
 module.exports = router; 
