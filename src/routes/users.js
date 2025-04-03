@@ -230,7 +230,7 @@ Here are important details from our Privacy Policy:
 
 Frequently Asked Questions:
 1. How do I delete my account? 
-   - Delete the app and your account will be inactivated. If you want all data deleted, contact buzedapp@gmail.com.
+   - Delete the app and your account will be inactivated. If you want all data deleted, contact support through the app.
 
 2. How long does it take for payment to process? 
    - Payments typically process within around 48 hours.
@@ -259,7 +259,7 @@ Frequently Asked Questions:
 10. What types of items sell best on SnapList?
     - Clothing, electronics, home goods, and collectibles typically sell well on our platform.
 
-If you cannot answer a user's question or they have a specific issue that requires human attention, provide the support email: buzedapp@gmail.com.
+If you cannot answer a user's question or they have a specific issue that requires human attention, tell the user "I'll escalate this to our support team, and someone will review your message soon." DO NOT provide any external email addresses. Only escalate if you absolutely cannot help with the user's question or if they specifically request to speak with a human agent.
 
 Keep responses concise, helpful, and focused on helping the user understand how to use the app.`
         },
@@ -314,6 +314,32 @@ Keep responses concise, helpful, and focused on helping the user understand how 
     if (chatError) {
       console.error('Error storing support chat:', chatError);
       // Continue anyway to return the AI response to the user
+    }
+    
+    // Check if this message needs to be escalated to admin support
+    // Look for phrases indicating escalation in the AI response
+    const escalationPhrases = [
+      "I'll escalate this to our support team",
+      "someone will review your message",
+      "escalate this to our team",
+      "requires human attention"
+    ];
+    
+    const needsEscalation = escalationPhrases.some(phrase => aiResponse.includes(phrase));
+    
+    // Update status if escalation is needed
+    if (needsEscalation && chatData && chatData.length > 0) {
+      const { error: updateError } = await supabase
+        .from('support_chats')
+        .update({ 
+          status: 'escalated',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', chatData[0].id);
+      
+      if (updateError) {
+        console.error('Error updating chat status to escalated:', updateError);
+      }
     }
     
     res.status(200).json({

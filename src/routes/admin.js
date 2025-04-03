@@ -890,7 +890,71 @@ router.get('/support-chats', async (req, res) => {
     // Calculate offset for pagination
     const offset = (page - 1) * limit;
     
-    // Start building query
+    // Determine if we should use a custom query for grouped conversations
+    const shouldGroupConversations = true; // Always group by conversation_id
+    
+    if (shouldGroupConversations) {
+      // Get latest message from each conversation
+      let rpcCall = supabase.rpc('get_latest_conversations_for_admin', { 
+        limit_param: parseInt(limit),
+        offset_param: parseInt(offset)
+      });
+      
+      // Add status filter if provided
+      if (status && status !== 'all') {
+        // If we're specifically looking for escalated chats, use that status
+        rpcCall = supabase.rpc('get_latest_conversations_by_status', { 
+          status_param: status,
+          limit_param: parseInt(limit),
+          offset_param: parseInt(offset)
+        });
+      }
+      
+      const { data: conversations, error: conversationsError, count } = await rpcCall;
+      
+      if (conversationsError) {
+        console.error('Error in RPC call for conversations:', conversationsError);
+        
+        // Fallback to standard query if RPC fails
+        let query = supabase
+          .from('support_chats')
+          .select(`
+            *,
+            users(name)
+          `, { count: 'exact' });
+        
+        // Add status filter if provided
+        if (status && status !== 'all') {
+          query = query.eq('status', status);
+        }
+        
+        // Add sorting
+        query = query.order(sort_by, { ascending: sort_dir === 'asc' });
+        
+        // Add pagination
+        query = query.range(offset, offset + limit - 1);
+        
+        // Execute query
+        const { data: chats, count, error } = await query;
+        
+        if (error) throw error;
+        
+        return res.json({
+          success: true,
+          chats,
+          count
+        });
+      }
+      
+      // Return the conversation-grouped results
+      return res.json({
+        success: true,
+        chats: conversations || [],
+        count: count || 0
+      });
+    }
+    
+    // Legacy query path (should not be used - left for backward compatibility)
     let query = supabase
       .from('support_chats')
       .select(`

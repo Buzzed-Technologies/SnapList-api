@@ -572,6 +572,63 @@
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
     }
+    
+    /* Page-specific styles */
+    .message-count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background-color: var(--background-color);
+      color: var(--text-primary);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 10px;
+      margin-left: 8px;
+    }
+    
+    .chat-item-status {
+      font-size: 12px;
+      font-weight: 500;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background-color: var(--background-color);
+    }
+    
+    .chat-item-status.pending {
+      background-color: var(--status-pending-background);
+      color: var(--status-pending-text);
+    }
+    
+    .chat-item-status.responded {
+      background-color: var(--status-responded-background);
+      color: var(--status-responded-text);
+    }
+    
+    .chat-item-status.resolved {
+      background-color: var(--status-resolved-background);
+      color: var(--status-resolved-text);
+    }
+    
+    .chat-item-status.escalated {
+      background-color: #ffecb3;
+      color: #e65100;
+      font-weight: 600;
+    }
+    
+    .toggle-ai-button {
+      font-size: 12px;
+      background-color: var(--background-color);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      padding: 2px 6px;
+      margin-left: 8px;
+      cursor: pointer;
+    }
+    
+    .hidden-ai {
+      opacity: 0.5;
+    }
   </style>
 </head>
 <body>
@@ -642,6 +699,7 @@
         <div class="chat-filter">
           <button class="chat-filter-button active" data-filter="all">All</button>
           <button class="chat-filter-button" data-filter="pending">Pending</button>
+          <button class="chat-filter-button" data-filter="escalated">Escalated</button>
           <button class="chat-filter-button" data-filter="responded">Responded</button>
           <button class="chat-filter-button" data-filter="resolved">Resolved</button>
         </div>
@@ -880,194 +938,338 @@
       });
       
       // Render the unique conversations
-      Array.from(conversationMap.values()).forEach(chat => {
-        const chatItem = document.createElement('div');
-        chatItem.className = `chat-item ${chat.id === currentChatId ? 'active' : ''}`;
-        chatItem.dataset.id = chat.id;
-        
-        let statusClass = '';
-        if (chat.status === 'pending') statusClass = 'chat-status-pending';
-        else if (chat.status === 'responded') statusClass = 'chat-status-responded';
-        else if (chat.status === 'resolved') statusClass = 'chat-status-resolved';
-        
-        const relativeTime = formatRelativeTime(chat.created_at);
-        const truncatedMessage = truncateText(chat.message, 50);
-        
-        chatItem.innerHTML = `
-          <div class="chat-status ${statusClass}"></div>
-          <div class="chat-item-user">
-            <span>${chat.user_name || 'Anonymous'}</span>
-            <span class="chat-item-time">${relativeTime}</span>
-          </div>
-          <div class="chat-item-preview">${truncatedMessage}</div>
-        `;
-        
-        chatItem.addEventListener('click', () => {
-          // Remove active class from all items
-          document.querySelectorAll('.chat-item').forEach(item => {
-            item.classList.remove('active');
+      Array.from(conversationMap.values())
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        .forEach(chat => {
+          const chatItem = document.createElement('div');
+          chatItem.className = `chat-item ${chat.status}`;
+          chatItem.dataset.id = chat.id;
+          chatItem.dataset.conversationId = chat.conversation_id || chat.id;
+          
+          // Get short preview of the message (max 50 chars)
+          const messagePreview = chat.message.length > 50 
+            ? chat.message.substring(0, 47) + '...' 
+            : chat.message;
+          
+          // Format the date for display
+          const date = new Date(chat.created_at);
+          const formattedDate = date.toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+
+          // Convert status to a more readable format
+          let statusText = chat.status.charAt(0).toUpperCase() + chat.status.slice(1);
+          let statusClass = chat.status;
+          
+          // Highlight escalated chats
+          if (chat.status === 'escalated') {
+            statusClass = 'escalated';
+            statusText = '⚠️ Escalated';
+          }
+          
+          // Show conversation message count if available
+          const messageCountDisplay = chat.message_count && chat.message_count > 1
+            ? `<span class="message-count" title="${chat.message_count} messages in this conversation">${chat.message_count}</span>`
+            : '';
+          
+          chatItem.innerHTML = `
+            <div class="chat-item-content">
+              <div class="chat-item-header">
+                <div class="chat-item-user">${chat.users?.name || 'Unknown User'}</div>
+                <div class="chat-item-time">${formattedDate}</div>
+              </div>
+              <div class="chat-item-preview">${messagePreview}</div>
+              <div class="chat-item-footer">
+                <div class="chat-item-status ${statusClass}">${statusText}</div>
+                ${messageCountDisplay}
+              </div>
+            </div>
+          `;
+          
+          chatItem.addEventListener('click', () => {
+            // Deselect all other items
+            document.querySelectorAll('.chat-item').forEach(item => {
+              item.classList.remove('active');
+            });
+            
+            // Select this item
+            chatItem.classList.add('active');
+            
+            // Set as current chat
+            currentChatId = chat.id;
+            
+            // Load chat detail - if we have a conversation_id, load the full conversation
+            if (chat.conversation_id) {
+              loadConversationDetail(chat);
+            } else {
+              loadChatDetail(chat);
+            }
+            
+            // Update URL with the chat ID for sharing/bookmarking
+            window.history.replaceState({}, '', `?id=${chat.id}`);
           });
           
-          // Add active class to clicked item
-          chatItem.classList.add('active');
-          
-          // Set current chat ID
-          currentChatId = chat.id;
-          
-          // Load chat detail
-          loadChatDetail(chat);
+          chatList.appendChild(chatItem);
         });
-        
-        chatList.appendChild(chatItem);
-      });
     }
     
     // Load Chat Detail
     function loadChatDetail(chat) {
-      // Check if chat exists
-      if (!chat) {
-        console.error('Attempted to load a chat that does not exist');
-        const chatDetail = document.getElementById('chatDetail');
-        chatDetail.innerHTML = `
-          <div class="empty-state">
-            <div class="empty-state-icon">⚠️</div>
-            <h3 class="empty-state-title">Chat not found</h3>
-            <p class="empty-state-text">The chat you're looking for does not exist or has been deleted.</p>
-          </div>
-        `;
-        return;
-      }
-      
       const chatDetail = document.getElementById('chatDetail');
       
-      let statusText = 'Pending';
-      let statusClass = 'pending';
+      // Format dates for display
+      const created = new Date(chat.created_at);
+      const formattedCreated = created.toLocaleString('en-US', dateOptions);
       
-      if (chat.status === 'responded') {
-        statusText = 'Responded';
-        statusClass = 'responded';
-      } else if (chat.status === 'resolved') {
-        statusText = 'Resolved';
-        statusClass = 'resolved';
+      let formattedUpdated = 'Not updated';
+      if (chat.updated_at) {
+        const updated = new Date(chat.updated_at);
+        formattedUpdated = updated.toLocaleString('en-US', dateOptions);
       }
       
-      const userInitials = getUserInitials(chat.user_name);
-      const formattedDate = formatDetailedTime(chat.created_at);
-      
+      // Generate the HTML for the chat detail
       chatDetail.innerHTML = `
-        <div class="chat-detail-header">
-          <div class="chat-user-info">
-            <div class="chat-user-avatar">${userInitials}</div>
-            <div>
-              <div class="chat-user-name">
-                ${chat.user_name || 'Anonymous'}
-                <span class="chat-detail-status ${statusClass}">${statusText}</span>
-              </div>
-              <div class="chat-user-detail">Conversation started on ${formattedDate}</div>
+        <div class="chat-header">
+          <div class="user-info">
+            <h3>${chat.users?.name || 'Unknown User'}</h3>
+            <span class="chat-date">Created: ${formattedCreated}</span>
+            <span class="chat-date">Last Updated: ${formattedUpdated}</span>
+          </div>
+          <div class="chat-actions">
+            <div class="status-selector">
+              <label for="statusSelect">Status:</label>
+              <select id="statusSelect">
+                <option value="pending" ${chat.status === 'pending' ? 'selected' : ''}>Pending</option>
+                <option value="escalated" ${chat.status === 'escalated' ? 'selected' : ''}>Escalated</option>
+                <option value="responded" ${chat.status === 'responded' ? 'selected' : ''}>Responded</option>
+                <option value="resolved" ${chat.status === 'resolved' ? 'selected' : ''}>Resolved</option>
+              </select>
             </div>
           </div>
-          
-          <div class="chat-action-dropdown">
-            <button id="toggleAiButton" class="chat-action-button" onclick="toggleAiResponse()">
-              ${chat.hide_ai_response ? 'Show AI Response' : 'Hide AI Response'}
-            </button>
-          </div>
         </div>
-        
         <div class="chat-messages" id="chatMessages">
-          <!-- Messages will be inserted here -->
           <div class="chat-message chat-message-user">
             ${chat.message}
-            <span class="chat-message-time">${formattedDate}</span>
+            <span class="chat-message-time">${formattedCreated}</span>
           </div>
-          
-          ${!chat.hide_ai_response ? `
-          <div class="chat-message chat-message-ai">
+          <div class="chat-message">
             ${chat.ai_response}
-            <span class="chat-message-time">${formattedDate}</span>
+            <span class="chat-message-time">${formattedCreated}</span>
+            <button class="toggle-ai-button" id="toggleAiButton">${chat.hide_ai_response ? 'Show AI Response' : 'Hide AI Response'}</button>
           </div>
-          ` : ''}
-          
           ${chat.admin_response ? `
             <div class="chat-message chat-message-admin">
               ${chat.admin_response}
-              <span class="chat-message-time">${formatDetailedTime(chat.updated_at)}</span>
+              <span class="chat-message-time">${formattedUpdated}</span>
             </div>
           ` : ''}
         </div>
-        
-        <div class="chat-input-container">
-          <textarea class="chat-input" id="chatReplyInput" placeholder="Type your reply here..."></textarea>
-          <button class="chat-send-button" id="chatSendButton">Send Reply</button>
-        </div>
-        
-        <div class="chat-status-buttons">
-          ${chat.status !== 'responded' ? `
-            <button class="status-button mark-responded" data-status="responded">Mark as Responded</button>
-          ` : ''}
-          ${chat.status !== 'resolved' ? `
-            <button class="status-button mark-resolved" data-status="resolved">Mark as Resolved</button>
-          ` : ''}
+        <div class="chat-reply" id="chatReply">
+          <div class="reply-header">Response</div>
+          <textarea id="chatReplyInput" placeholder="Type your response..."></textarea>
+          <button id="chatReplySend">Send Response</button>
         </div>
       `;
       
-      // Scroll to the bottom of messages
-      const messagesContainer = document.getElementById('chatMessages');
-      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      // Add event listeners to the status selector
+      document.getElementById('statusSelect').addEventListener('change', function(e) {
+        updateChatStatus(chat.id, e.target.value);
+      });
       
-      // Add event listener to send button
-      document.getElementById('chatSendButton').addEventListener('click', () => {
+      // Add event listener to the toggle AI button
+      document.getElementById('toggleAiButton').addEventListener('click', function() {
+        toggleAiResponse(chat.id);
+      });
+      
+      // Add event listener to the send button
+      document.getElementById('chatReplySend').addEventListener('click', function() {
         sendAdminReply(chat.id);
-      });
-      
-      // Add event listener to chat input for Enter key
-      document.getElementById('chatReplyInput').addEventListener('keydown', (e) => {
-        // Send message when Ctrl+Enter or Command+Enter is pressed
-        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-          e.preventDefault();
-          sendAdminReply(chat.id);
-        }
-      });
-      
-      // Add event listeners to status buttons
-      document.querySelectorAll('.status-button').forEach(button => {
-        button.addEventListener('click', function() {
-          updateChatStatus(chat.id, this.dataset.status);
-        });
       });
     }
     
+    // Load the entire conversation for a chat
+    function loadConversationDetail(chat) {
+      // Start by showing a loading indicator
+      const chatDetail = document.getElementById('chatDetail');
+      chatDetail.innerHTML = `
+        <div class="loading-indicator">
+          <div class="loading-spinner"></div>
+          <div>Loading conversation...</div>
+        </div>
+      `;
+      
+      // Get the conversation_id
+      const conversationId = chat.conversation_id || chat.id;
+      
+      // Fetch all messages in this conversation
+      fetch(`/api/admin/support-chats/conversation/${conversationId}`)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Failed to fetch conversation');
+          }
+          return response.json();
+        })
+        .then(data => {
+          if (!data.success) {
+            throw new Error(data.message || 'Failed to fetch conversation');
+          }
+          
+          const messages = data.messages || [];
+          
+          // Format dates for display
+          const created = new Date(chat.created_at);
+          const formattedCreated = created.toLocaleString('en-US', dateOptions);
+          
+          let formattedUpdated = 'Not updated';
+          if (chat.updated_at) {
+            const updated = new Date(chat.updated_at);
+            formattedUpdated = updated.toLocaleString('en-US', dateOptions);
+          }
+          
+          // Generate the HTML for the conversation header
+          let conversationHTML = `
+            <div class="chat-header">
+              <div class="user-info">
+                <h3>${chat.users?.name || 'Unknown User'}</h3>
+                <span class="chat-date">Created: ${formattedCreated}</span>
+                <span class="chat-date">Last Updated: ${formattedUpdated}</span>
+                <span class="chat-date">Messages: ${messages.length}</span>
+              </div>
+              <div class="chat-actions">
+                <div class="status-selector">
+                  <label for="statusSelect">Status:</label>
+                  <select id="statusSelect">
+                    <option value="pending" ${chat.status === 'pending' ? 'selected' : ''}>Pending</option>
+                    <option value="escalated" ${chat.status === 'escalated' ? 'selected' : ''}>Escalated</option>
+                    <option value="responded" ${chat.status === 'responded' ? 'selected' : ''}>Responded</option>
+                    <option value="resolved" ${chat.status === 'resolved' ? 'selected' : ''}>Resolved</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div class="chat-messages" id="chatMessages">
+          `;
+          
+          // Add each message to the conversation
+          messages.forEach(msg => {
+            const msgCreated = new Date(msg.created_at);
+            const msgFormattedCreated = msgCreated.toLocaleString('en-US', dateOptions);
+            
+            // Add user message
+            conversationHTML += `
+              <div class="chat-message chat-message-user">
+                ${msg.message}
+                <span class="chat-message-time">${msgFormattedCreated}</span>
+              </div>
+            `;
+            
+            // Add AI response if it exists and isn't hidden
+            conversationHTML += `
+              <div class="chat-message ${msg.hide_ai_response ? 'hidden-ai' : ''}">
+                ${msg.ai_response}
+                <span class="chat-message-time">${msgFormattedCreated}</span>
+                <button class="toggle-ai-button" data-id="${msg.id}">${msg.hide_ai_response ? 'Show AI Response' : 'Hide AI Response'}</button>
+              </div>
+            `;
+            
+            // Add admin response if it exists
+            if (msg.admin_response) {
+              let msgUpdated = new Date(msg.updated_at || msg.created_at);
+              let msgFormattedUpdated = msgUpdated.toLocaleString('en-US', dateOptions);
+              
+              conversationHTML += `
+                <div class="chat-message chat-message-admin">
+                  ${msg.admin_response}
+                  <span class="chat-message-time">${msgFormattedUpdated}</span>
+                </div>
+              `;
+            }
+          });
+          
+          // Close the messages div and add the reply section
+          conversationHTML += `
+            </div>
+            <div class="chat-reply" id="chatReply">
+              <div class="reply-header">Response</div>
+              <textarea id="chatReplyInput" placeholder="Type your response..."></textarea>
+              <button id="chatReplySend">Send Response</button>
+            </div>
+          `;
+          
+          // Set the HTML
+          chatDetail.innerHTML = conversationHTML;
+          
+          // Add event listener to the status selector
+          document.getElementById('statusSelect').addEventListener('change', function(e) {
+            updateChatStatus(chat.id, e.target.value);
+          });
+          
+          // Add event listeners to all toggle AI buttons
+          document.querySelectorAll('.toggle-ai-button').forEach(button => {
+            button.addEventListener('click', function() {
+              toggleAiResponse(button.dataset.id);
+            });
+          });
+          
+          // Add event listener to the send button to respond to the most recent message
+          document.getElementById('chatReplySend').addEventListener('click', function() {
+            // Get the ID of the latest message in the conversation
+            const latestMessageId = messages.length > 0 
+              ? messages[messages.length - 1].id 
+              : chat.id;
+              
+            sendAdminReply(latestMessageId);
+          });
+          
+          // Scroll to the bottom of the messages
+          const messagesContainer = document.getElementById('chatMessages');
+          messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        })
+        .catch(error => {
+          console.error('Error fetching conversation:', error);
+          chatDetail.innerHTML = `
+            <div class="error-message">
+              <p>Error loading conversation: ${error.message}</p>
+              <button onclick="loadChatDetail(chatData.find(c => c.id === '${chat.id}'))">Try Again</button>
+            </div>
+          `;
+        });
+    }
+    
     // Toggle AI response visibility
-    function toggleAiResponse() {
-      if (!currentChatId) return;
+    function toggleAiResponse(chatId) {
+      if (!chatId) return;
       
       // Get the current chat
-      const chat = chatData.find(c => c.id === currentChatId);
+      const chat = chatData.find(c => c.id === chatId);
       if (!chat) return;
       
       // Toggle the hide_ai_response property
       chat.hide_ai_response = !chat.hide_ai_response;
       
       // Update the toggle button text
-      const toggleButton = document.getElementById('toggleAiButton');
+      const toggleButton = document.querySelector('.toggle-ai-button[data-id="' + chatId + '"]');
       if (toggleButton) {
         toggleButton.textContent = chat.hide_ai_response ? 'Show AI Response' : 'Hide AI Response';
       }
       
       // Update the chat display
-      const aiMessageElement = document.querySelector('.chat-message-ai');
+      const aiMessageElement = document.querySelector('.chat-message.hidden-ai[data-id="' + chatId + '"]');
       if (aiMessageElement) {
         if (chat.hide_ai_response) {
-          aiMessageElement.style.display = 'none';
+          aiMessageElement.classList.remove('hidden-ai');
         } else {
-          aiMessageElement.style.display = 'block';
+          aiMessageElement.classList.add('hidden-ai');
         }
       } else if (!chat.hide_ai_response && chat.ai_response) {
         // AI message doesn't exist in the DOM but should be shown
         const userMessage = document.querySelector('.chat-message-user');
         if (userMessage) {
           const aiMessage = document.createElement('div');
-          aiMessage.className = 'chat-message chat-message-ai';
+          aiMessage.className = 'chat-message chat-message-ai hidden-ai';
           aiMessage.innerHTML = `
             ${chat.ai_response}
             <span class="chat-message-time">${formatDetailedTime(chat.created_at)}</span>
@@ -1077,7 +1279,7 @@
       }
       
       // Send the update to the server
-      fetch(`/api/admin/support-chats/${currentChatId}/toggle-ai`, {
+      fetch(`/api/admin/support-chats/${chatId}/toggle-ai`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
