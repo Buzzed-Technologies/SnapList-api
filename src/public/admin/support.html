@@ -799,6 +799,8 @@
               loadChatDetail(selectedChat);
             }
           }
+          
+          return Promise.resolve(data.chats);
         } else {
           throw new Error(data.message || 'Failed to fetch support chats');
         }
@@ -810,6 +812,7 @@
             <button onclick="fetchSupportChats()" style="margin-top: 10px; padding: 8px 16px;">Try Again</button>
           </div>
         `;
+        return Promise.reject(error);
       }
     }
     
@@ -872,6 +875,20 @@
     
     // Load Chat Detail
     function loadChatDetail(chat) {
+      // Check if chat exists
+      if (!chat) {
+        console.error('Attempted to load a chat that does not exist');
+        const chatDetail = document.getElementById('chatDetail');
+        chatDetail.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">⚠️</div>
+            <h3 class="empty-state-title">Chat not found</h3>
+            <p class="empty-state-text">The chat you're looking for does not exist or has been deleted.</p>
+          </div>
+        `;
+        return;
+      }
+      
       const chatDetail = document.getElementById('chatDetail');
       
       let statusText = 'Pending';
@@ -1209,7 +1226,45 @@
     document.addEventListener('DOMContentLoaded', function() {
       checkAuth();
       displayCurrentDate();
-      fetchSupportChats();
+      fetchSupportChats().then(() => {
+        // After loading chats, check if we have a chat ID in the URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const chatId = urlParams.get('id');
+        
+        if (chatId) {
+          // Find the chat with this ID
+          const selectedChat = chatData.find(chat => chat.id === chatId);
+          if (selectedChat) {
+            // Set as current chat
+            currentChatId = chatId;
+            
+            // Select in the UI
+            const chatItem = document.querySelector(`.chat-item[data-id="${chatId}"]`);
+            if (chatItem) {
+              // Remove active class from all items
+              document.querySelectorAll('.chat-item').forEach(item => {
+                item.classList.remove('active');
+              });
+              
+              // Add active class to this item
+              chatItem.classList.add('active');
+            }
+            
+            // Load chat detail
+            loadChatDetail(selectedChat);
+            
+            // If respond parameter is set, focus on the response input
+            if (urlParams.get('respond') === 'true') {
+              setTimeout(() => {
+                const responseInput = document.getElementById('adminResponse');
+                if (responseInput) {
+                  responseInput.focus();
+                }
+              }, 500);
+            }
+          }
+        }
+      });
       startMainListRefresh();
     });
 

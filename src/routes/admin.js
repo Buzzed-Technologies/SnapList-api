@@ -19,6 +19,39 @@ const EBAY_API_URL = EBAY_CONFIG.sandboxMode
   : 'https://api.ebay.com';
 
 /**
+ * @api {get} /api/admin/auth/check Check authentication status
+ * @apiDescription Check if the user is authenticated
+ * @apiName CheckAuth
+ * @apiGroup Admin
+ * 
+ * @apiSuccess {Boolean} authenticated Whether the user is authenticated
+ */
+router.get('/auth/check', (req, res) => {
+  // In a production environment, this would validate session tokens
+  // For now, we'll return authenticated=true for all requests
+  res.json({
+    authenticated: true
+  });
+});
+
+/**
+ * @api {post} /api/admin/auth/logout Logout
+ * @apiDescription Logout the user
+ * @apiName Logout
+ * @apiGroup Admin
+ * 
+ * @apiSuccess {Boolean} success Whether the logout was successful
+ */
+router.post('/auth/logout', (req, res) => {
+  // In a production environment, this would invalidate session tokens
+  // For now, we'll return success=true for all requests
+  res.json({
+    success: true,
+    message: 'Logged out successfully'
+  });
+});
+
+/**
  * @api {get} /api/admin/stats Get dashboard statistics
  * @apiDescription Get key statistics for the admin dashboard
  * @apiName GetDashboardStats
