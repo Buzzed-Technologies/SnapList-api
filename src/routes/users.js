@@ -181,7 +181,7 @@ router.post('/:id/notifications/read', async (req, res) => {
 router.post('/:id/chat/support', async (req, res) => {
   try {
     const { id } = req.params;
-    const { message } = req.body;
+    const { message, conversation_id } = req.body;
     
     if (!message) {
       return res.status(400).json({ success: false, message: 'Message is required' });
@@ -271,15 +271,42 @@ Keep responses concise, helpful, and focused on helping the user understand how 
     
     const aiResponse = response.choices[0].message.content;
     
+    // Check if we need to create a new conversation or add to existing one
+    let insertData = {
+      user_id: id,
+      message,
+      ai_response: aiResponse,
+      status: 'pending' // Admins will need to review and potentially respond
+    };
+    
+    // If conversation_id is provided, add to that conversation
+    if (conversation_id) {
+      // Verify the conversation belongs to this user
+      const { data: existingConversation, error: verifyError } = await supabase
+        .from('support_chats')
+        .select('id')
+        .eq('conversation_id', conversation_id)
+        .eq('user_id', id)
+        .limit(1);
+      
+      if (verifyError || !existingConversation || existingConversation.length === 0) {
+        // Invalid conversation ID, create new one
+        const { data: newUUID } = await supabase.rpc('gen_random_uuid');
+        insertData.conversation_id = newUUID;
+      } else {
+        // Valid conversation ID, use it
+        insertData.conversation_id = conversation_id;
+      }
+    } else {
+      // Generate a new UUID for conversation_id
+      const { data: newUUID } = await supabase.rpc('gen_random_uuid');
+      insertData.conversation_id = newUUID;
+    }
+    
     // Store the support chat in the database
     const { data: chatData, error: chatError } = await supabase
       .from('support_chats')
-      .insert({
-        user_id: id,
-        message,
-        ai_response: aiResponse,
-        status: 'pending' // Admins will need to review and potentially respond
-      })
+      .insert(insertData)
       .select();
       
     if (chatError) {
@@ -290,7 +317,8 @@ Keep responses concise, helpful, and focused on helping the user understand how 
     res.status(200).json({
       success: true,
       response: aiResponse,
-      chatId: chatData && chatData.length > 0 ? chatData[0].id : null
+      chatId: chatData && chatData.length > 0 ? chatData[0].id : null,
+      conversationId: chatData && chatData.length > 0 ? chatData[0].conversation_id : null
     });
   } catch (error) {
     console.error(`Error in POST /users/${req.params.id}/chat/support:`, error);
@@ -300,7 +328,7 @@ Keep responses concise, helpful, and focused on helping the user understand how 
 
 /**
  * @route GET /api/users/:id/chat/support/history
- * @desc Get user's support chat history
+ * @desc Get user's support chat history grouped by conversations
  * @access Public
  */
 router.get('/:id/chat/support/history', async (req, res) => {
@@ -308,33 +336,54 @@ router.get('/:id/chat/support/history', async (req, res) => {
     const { id } = req.params;
     const { limit = 20 } = req.query;
     
-    // Get user support chat history
-    const { data: chats, error } = await supabase
-      .from('support_chats')
-      .select('*')
-      .eq('user_id', id)
-      .order('created_at', { ascending: false })
-      .limit(parseInt(limit));
+    // Get the latest message from each conversation
+    const { data: conversations, error: conversationsError } = await supabase
+      .rpc('get_latest_conversations', { 
+        user_id_param: id,
+        limit_param: parseInt(limit)
+      });
     
-    if (error) {
-      console.error(`Error fetching support chat history for user ${id}:`, error);
-      return res.status(500).json({
-        success: false,
-        message: `Failed to fetch support chat history: ${error.message}`
+    if (conversationsError) {
+      console.error(`Error fetching support chat conversations for user ${id}:`, conversationsError);
+      
+      // Fallback to older implementation if the function doesn't exist
+      const { data: chats, error } = await supabase
+        .from('support_chats')
+        .select('*')
+        .eq('user_id', id)
+        .order('created_at', { ascending: false })
+        .limit(parseInt(limit));
+      
+      if (error) {
+        return res.status(500).json({
+          success: false,
+          message: `Failed to fetch support chat history: ${error.message}`
+        });
+      }
+      
+      // Transform the chats data to include unread flag and ensure updated_at is not null
+      const formattedChats = chats.map(chat => ({
+        ...chat,
+        updated_at: chat.updated_at || chat.created_at,
+        unread: chat.admin_response && !chat.read_at
+      }));
+      
+      return res.status(200).json({
+        success: true,
+        chats: formattedChats
       });
     }
     
-    // Transform the chats data to include unread flag and ensure updated_at is not null
-    const formattedChats = chats.map(chat => ({
+    // Transform the conversations data
+    const formattedConversations = conversations.map(chat => ({
       ...chat,
-      // Set updated_at to created_at if it's null
       updated_at: chat.updated_at || chat.created_at,
       unread: chat.admin_response && !chat.read_at
     }));
     
     res.status(200).json({
       success: true,
-      chats: formattedChats
+      chats: formattedConversations
     });
   } catch (error) {
     console.error(`Error in GET /users/${req.params.id}/chat/support/history:`, error);
@@ -346,40 +395,54 @@ router.get('/:id/chat/support/history', async (req, res) => {
 });
 
 /**
- * @route POST /api/users/:id/chat/support/:chatId/read
- * @desc Mark a support chat as read
+ * @route GET /api/users/:id/chat/support/conversations/:conversationId
+ * @desc Get all messages in a specific conversation
  * @access Public
  */
-router.post('/:id/chat/support/:chatId/read', async (req, res) => {
+router.get('/:id/chat/support/conversations/:conversationId', async (req, res) => {
   try {
-    const { id, chatId } = req.params;
+    const { id, conversationId } = req.params;
     
-    // Update the chat to mark it as read
-    const { data, error } = await supabase
+    // Get all messages in this conversation
+    const { data: messages, error } = await supabase
       .from('support_chats')
-      .update({
-        read_at: new Date().toISOString()
-      })
-      .eq('id', chatId)
-      .eq('user_id', id);
+      .select('*')
+      .eq('user_id', id)
+      .eq('conversation_id', conversationId)
+      .order('created_at', { ascending: true });
     
     if (error) {
-      console.error(`Error marking support chat ${chatId} as read:`, error);
+      console.error(`Error fetching conversation ${conversationId} for user ${id}:`, error);
       return res.status(500).json({
         success: false,
-        message: `Failed to mark chat as read: ${error.message}`
+        message: `Failed to fetch conversation: ${error.message}`
       });
+    }
+    
+    // Check if there are any unread messages and mark them as read
+    const unreadMessages = messages.filter(msg => msg.admin_response && !msg.read_at);
+    if (unreadMessages.length > 0) {
+      const unreadIds = unreadMessages.map(msg => msg.id);
+      
+      const { error: markReadError } = await supabase
+        .from('support_chats')
+        .update({ read_at: new Date().toISOString() })
+        .in('id', unreadIds);
+      
+      if (markReadError) {
+        console.error(`Error marking messages as read in conversation ${conversationId}:`, markReadError);
+      }
     }
     
     res.status(200).json({
       success: true,
-      message: 'Chat marked as read'
+      messages: messages
     });
   } catch (error) {
-    console.error(`Error in POST /users/${req.params.id}/chat/support/${req.params.chatId}/read:`, error);
+    console.error(`Error in GET /users/${req.params.id}/chat/support/conversations/${req.params.conversationId}:`, error);
     res.status(500).json({
       success: false,
-      message: `Failed to mark chat as read: ${error.message}`
+      message: `Failed to fetch conversation: ${error.message}`
     });
   }
 });
