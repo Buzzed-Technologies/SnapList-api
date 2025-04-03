@@ -364,23 +364,46 @@ Keep responses concise, helpful, and focused on helping the user understand how 
       "I'll escalate this to our support team",
       "someone will review your message",
       "escalate this to our team",
-      "requires human attention"
+      "requires human attention",
+      "I'll escalate this"
     ];
     
     const needsEscalation = escalationPhrases.some(phrase => aiResponse.includes(phrase));
     
     // Update status if escalation is needed
     if (needsEscalation && chatData && chatData.length > 0) {
-      const { error: updateError } = await supabase
+      // Using a more direct update to ensure it's set to escalated
+      const { data: updatedChat, error: updateError } = await supabase
         .from('support_chats')
         .update({ 
           status: 'escalated',
           updated_at: new Date().toISOString()
         })
-        .eq('id', chatData[0].id);
+        .eq('id', chatData[0].id)
+        .select()
+        .single();
       
       if (updateError) {
         console.error('Error updating chat status to escalated:', updateError);
+      } else {
+        console.log(`Successfully escalated chat ${chatData[0].id} to admin support`);
+        
+        // If this is part of a conversation, update all messages in the conversation
+        if (insertData.conversation_id) {
+          const { error: conversationUpdateError } = await supabase
+            .from('support_chats')
+            .update({ 
+              status: 'escalated',
+              updated_at: new Date().toISOString()
+            })
+            .eq('conversation_id', insertData.conversation_id);
+          
+          if (conversationUpdateError) {
+            console.error('Error updating conversation status to escalated:', conversationUpdateError);
+          } else {
+            console.log(`Successfully escalated conversation ${insertData.conversation_id} to admin support`);
+          }
+        }
       }
     }
     

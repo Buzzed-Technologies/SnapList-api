@@ -681,20 +681,6 @@
       font-weight: 600;
     }
     
-    .toggle-ai-button {
-      font-size: 12px;
-      background-color: var(--background-color);
-      border: 1px solid var(--border-color);
-      border-radius: 4px;
-      padding: 2px 6px;
-      margin-left: 8px;
-      cursor: pointer;
-    }
-    
-    .hidden-ai {
-      opacity: 0.5;
-    }
-    
     /* Notification badge */
     .notification-badge {
       position: absolute;
@@ -1299,10 +1285,9 @@
             ${escapeHtml(chat.message)}
             <span class="chat-message-time">${formattedCreated}</span>
           </div>
-          <div class="chat-message ${chat.hide_ai_response ? 'hidden-ai' : ''}">
+          <div class="chat-message">
             ${escapeHtml(chat.ai_response)}
             <span class="chat-message-time">${formattedCreated}</span>
-            <button class="toggle-ai-button" id="toggleAiButton">${chat.hide_ai_response ? 'Show AI Response' : 'Hide AI Response'}</button>
           </div>
           ${chat.admin_response ? `
             <div class="chat-message chat-message-admin">
@@ -1321,11 +1306,6 @@
       // Add event listeners to the status selector
       document.getElementById('statusSelect').addEventListener('change', function(e) {
         updateChatStatus(chat.id, e.target.value);
-      });
-      
-      // Add event listener to the toggle AI button
-      document.getElementById('toggleAiButton').addEventListener('click', function() {
-        toggleAiResponse(chat.id);
       });
       
       // Add event listener to the send button
@@ -1439,10 +1419,9 @@
             
             // Add AI response if it exists and isn't hidden
             conversationHTML += `
-              <div class="chat-message ${msg.hide_ai_response ? 'hidden-ai' : ''}">
+              <div class="chat-message">
                 ${escapeHtml(msg.ai_response)}
                 <span class="chat-message-time">${msgFormattedCreated}</span>
-                <button class="toggle-ai-button" data-id="${msg.id}">${msg.hide_ai_response ? 'Show AI Response' : 'Hide AI Response'}</button>
               </div>
             `;
             
@@ -1476,13 +1455,6 @@
           // Add event listener to the status selector
           document.getElementById('statusSelect').addEventListener('change', function(e) {
             updateChatStatus(chat.id, e.target.value);
-          });
-          
-          // Add event listeners to all toggle AI buttons
-          document.querySelectorAll('.toggle-ai-button').forEach(button => {
-            button.addEventListener('click', function() {
-              toggleAiResponse(button.dataset.id);
-            });
           });
           
           // Add event listener to the send button to respond to the most recent message
@@ -1522,58 +1494,6 @@
             </div>
           `;
         });
-    }
-    
-    // Toggle AI response visibility
-    function toggleAiResponse(chatId) {
-      if (!chatId) return;
-      
-      // Get the current chat
-      const chat = chatData.find(c => c.id === chatId);
-      if (!chat) return;
-      
-      // Toggle the hide_ai_response property
-      chat.hide_ai_response = !chat.hide_ai_response;
-      
-      // Update the toggle button text
-      const toggleButton = document.querySelector('.toggle-ai-button[data-id="' + chatId + '"]');
-      if (toggleButton) {
-        toggleButton.textContent = chat.hide_ai_response ? 'Show AI Response' : 'Hide AI Response';
-      }
-      
-      // Update the chat display
-      const aiMessageElement = document.querySelector('.chat-message.hidden-ai[data-id="' + chatId + '"]');
-      if (aiMessageElement) {
-        if (chat.hide_ai_response) {
-          aiMessageElement.classList.remove('hidden-ai');
-        } else {
-          aiMessageElement.classList.add('hidden-ai');
-        }
-      } else if (!chat.hide_ai_response && chat.ai_response) {
-        // AI message doesn't exist in the DOM but should be shown
-        const userMessage = document.querySelector('.chat-message-user');
-        if (userMessage) {
-          const aiMessage = document.createElement('div');
-          aiMessage.className = 'chat-message chat-message-ai hidden-ai';
-          aiMessage.innerHTML = `
-            ${chat.ai_response}
-            <span class="chat-message-time">${formatDetailedTime(chat.created_at)}</span>
-          `;
-          userMessage.insertAdjacentElement('afterend', aiMessage);
-        }
-      }
-      
-      // Send the update to the server
-      fetch(`/api/admin/support-chats/${chatId}/toggle-ai`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      })
-      .then(response => response.json())
-      .catch(error => {
-        console.error('Error toggling AI response:', error);
-      });
     }
     
     // Send Admin Reply
