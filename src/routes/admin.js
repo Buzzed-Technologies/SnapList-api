@@ -1247,5 +1247,115 @@ router.put('/support-chats/:id/status', async (req, res) => {
   }
 });
 
+/**
+ * @api {get} /api/admin/payouts/:id Get a payout by ID
+ * @apiDescription Get details for a specific payout
+ * @apiName GetPayoutById
+ * @apiGroup Admin
+ * 
+ * @apiParam {String} id Payout ID
+ * 
+ * @apiSuccess {Object} payout Payout details
+ */
+router.get('/payouts/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Get payout details
+    const { data: payout, error } = await supabase
+      .from('payout_requests')
+      .select(`
+        *,
+        users(name)
+      `)
+      .eq('id', id)
+      .single();
+    
+    if (error) {
+      console.error(`Error fetching payout ${id}:`, error);
+      return res.status(404).json({
+        success: false,
+        message: 'Payout not found'
+      });
+    }
+    
+    // Format payout data for frontend
+    const formattedPayout = {
+      id: payout.id,
+      user_id: payout.user_id,
+      user_name: payout.users?.name || 'Unknown',
+      amount: payout.amount,
+      status: payout.status,
+      phone: payout.phone,
+      created_at: payout.created_at,
+      completed_at: payout.completed_at
+    };
+    
+    res.json({
+      success: true,
+      payout: formattedPayout
+    });
+  } catch (error) {
+    console.error('Error fetching payout:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch payout'
+    });
+  }
+});
+
+/**
+ * @api {get} /api/admin/payouts/:id/items Get items for a payout
+ * @apiDescription Get all items included in a specific payout
+ * @apiName GetPayoutItems
+ * @apiGroup Admin
+ * 
+ * @apiParam {String} id Payout ID
+ * 
+ * @apiSuccess {Object[]} items Array of items in the payout
+ */
+router.get('/payouts/:id/items', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Get the user_id from the payout
+    const { data: payout, error: payoutError } = await supabase
+      .from('payout_requests')
+      .select('user_id, created_at')
+      .eq('id', id)
+      .single();
+    
+    if (payoutError) {
+      return res.status(404).json({
+        success: false,
+        message: 'Payout not found'
+      });
+    }
+    
+    // Get listings/items for this user that were sold before this payout was created
+    const { data: items, error: itemsError } = await supabase
+      .from('listings')
+      .select('id, title, price, image_url, status, updated_at')
+      .eq('user_id', payout.user_id)
+      .eq('status', 'sold')
+      .lt('updated_at', payout.created_at);
+    
+    if (itemsError) {
+      throw itemsError;
+    }
+    
+    res.json({
+      success: true,
+      items: items || []
+    });
+  } catch (error) {
+    console.error('Error fetching payout items:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch payout items'
+    });
+  }
+});
+
 // Export the router module
 module.exports = router; 
