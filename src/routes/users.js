@@ -324,10 +324,11 @@ router.get('/:id/chat/support/history', async (req, res) => {
       });
     }
     
-    // Transform the chats data to include unread flag
-    // Consider a chat unread if it has an admin_response but the user hasn't seen it
+    // Transform the chats data to include unread flag and ensure updated_at is not null
     const formattedChats = chats.map(chat => ({
       ...chat,
+      // Set updated_at to created_at if it's null
+      updated_at: chat.updated_at || chat.created_at,
       unread: chat.admin_response && !chat.read_at
     }));
     
