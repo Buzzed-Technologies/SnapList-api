@@ -2051,61 +2051,84 @@
         // Fixed beep sound - browser-compatible MP3 encoding
         const base64Sound = 'data:audio/mp3;base64,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';
         
+        // Create audio element
         notificationSound = new Audio(base64Sound);
+        notificationSound.volume = 0.8;
+        notificationSound.preload = 'auto';
         
-        // Set volume to moderate level
-        notificationSound.volume = 0.5;
+        // Mark document as ready for audio
+        document.documentElement.setAttribute('data-user-interacted', 'true');
         
-        // Pre-load the sound
+        // Try to load the sound ahead of time
         notificationSound.load();
         
-        // We need to prime the audio API on first user interaction
+        // First try a simple play/pause to prime the audio element
+        try {
+          notificationSound.muted = true;
+          const promise = notificationSound.play();
+          if (promise !== undefined) {
+            promise
+              .then(() => {
+                console.log("Initial muted sound primed");
+                notificationSound.pause();
+                notificationSound.currentTime = 0;
+                notificationSound.muted = false;
+              })
+              .catch(err => {
+                console.warn("Initial silent priming failed:", err);
+              });
+          }
+        } catch (e) {
+          console.warn("Pre-loading error:", e);
+        }
+        
+        // Set up user interaction handler
         const unlockAudio = () => {
-          // Mark the document as having received user interaction
+          console.log("User interaction detected - unlocking audio");
           document.documentElement.setAttribute('data-user-interacted', 'true');
           
-          // Create and play a silent sound first - use a known working silent MP3
+          // Try to play a silent sound to unlock audio
           const silentSound = new Audio("data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//uQZAAP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAETEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVU=");
-          silentSound.volume = 0.1; // Very low volume
+          silentSound.volume = 0.1;
           
-          silentSound.play().then(() => {
-            console.log("Audio context unlocked");
-            // Try playing the notification sound once to ensure it's loaded
-            notificationSound.play().then(() => {
-              console.log("Notification sound primed");
-              notificationSound.pause();
-              notificationSound.currentTime = 0;
-            }).catch(e => {
-              console.warn("Couldn't prime notification sound", e);
+          silentSound.play()
+            .then(() => {
+              console.log("Audio context unlocked by user");
+              
+              // Now try to prime the actual notification sound
+              notificationSound.play()
+                .then(() => {
+                  console.log("Notification sound primed");
+                  notificationSound.pause();
+                  notificationSound.currentTime = 0;
+                })
+                .catch(err => {
+                  console.warn("Couldn't prime notification sound:", err);
+                });
+                
+              // Remove listeners after successful unlock
+              document.removeEventListener('click', unlockAudio);
+              document.removeEventListener('touchstart', unlockAudio);
+            })
+            .catch(err => {
+              console.warn("Couldn't unlock audio context:", err);
             });
-            
-            // Remove listeners once unlocked
-            document.removeEventListener('click', unlockAudio);
-            document.removeEventListener('touchstart', unlockAudio);
-          }).catch(e => {
-            console.warn("Couldn't unlock audio context", e);
-          });
         };
         
-        // Add listeners for both click and touch events to ensure it works on all devices
-        document.addEventListener('click', unlockAudio, { once: false });
-        document.addEventListener('touchstart', unlockAudio, { once: false });
+        // Add interaction listeners
+        document.addEventListener('click', unlockAudio, { once: true });
+        document.addEventListener('touchstart', unlockAudio, { once: true });
         
-        // Add a function to play the sound safely
+        // Provide a custom play method
         notificationSound.playSound = function() {
-          try {
-            this.currentTime = 0;
-            return this.play();
-          } catch (e) {
-            console.warn("Error playing notification sound:", e);
-            return Promise.reject(e);
-          }
+          this.currentTime = 0;
+          this.muted = false;
+          return this.play();
         };
         
         console.log('Notification sound initialized');
       } catch (e) {
         console.error('Error initializing notification sound:', e);
-        // Fallback to a simpler implementation if needed
         notificationSound = {
           playSound: function() {
             console.log('Notification sound fallback');
@@ -2123,34 +2146,50 @@
       }
       
       try {
-        // Check if the user has interacted with the document
-        const hasInteracted = document.documentElement.hasAttribute('data-user-interacted');
+        // Force autoplay by trying multiple approaches in sequence
         
-        if (!hasInteracted) {
-          // If no interaction yet, just show a more noticeable visual notification
-          console.log('Audio not allowed yet - showing visual notification instead');
+        // First try - direct play with unmuted
+        notificationSound.currentTime = 0;
+        notificationSound.muted = false;
+        notificationSound.volume = 0.8;
+        
+        const playPromise = notificationSound.play();
+        
+        if (playPromise !== undefined) {
+          playPromise.then(() => {
+            console.log('Notification sound played successfully');
+          }).catch(e => {
+            console.warn('Direct play failed, trying backup approach:', e);
+            
+            // Second try - play muted first, then unmute
+            notificationSound.muted = true;
+            notificationSound.play()
+              .then(() => {
+                notificationSound.muted = false;
+                console.log('Notification sound played (second attempt)');
+              })
+              .catch(e2 => {
+                console.warn('Second attempt failed:', e2);
+                
+                // Third try - create new audio instance
+                try {
+                  const newSound = new Audio('data:audio/mp3;base64,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');
+                  newSound.volume = 1.0; // Maximum volume
+                  newSound.play().catch(() => {
+                    // If all audio approaches fail, use visual notification
+                    showVisualNotification();
+                  });
+                } catch {
+                  showVisualNotification();
+                }
+              });
+          });
+        } else {
+          // Fallback for browsers without Promise support
           showVisualNotification();
-          return;
         }
-        
-        // Clone the audio node for better playback reliability
-        const soundToPlay = notificationSound.cloneNode();
-        
-        // Play the sound
-        soundToPlay.play().then(() => {
-          console.log('Notification sound played successfully');
-        }).catch(error => {
-          console.warn('Error playing notification sound:', error);
-          
-          // If we get NotAllowedError, show a visual notification instead
-          if (error.name === 'NotAllowedError') {
-            console.log('Audio not allowed yet - showing visual notification instead');
-            showVisualNotification();
-          }
-        });
       } catch (error) {
         console.error('Error in playNotificationSound:', error);
-        // Fall back to visual notification
         showVisualNotification();
       }
     }
