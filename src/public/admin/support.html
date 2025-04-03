@@ -1682,37 +1682,47 @@
           
           // Add the message to the chat
           const messagesContainer = document.getElementById('chatMessages');
-          const newMessage = document.createElement('div');
-          newMessage.className = 'chat-message chat-message-admin';
-          newMessage.innerHTML = `
-            ${reply}
-            <span class="chat-message-time">just now</span>
-          `;
-          messagesContainer.appendChild(newMessage);
-          
-          // Scroll to bottom
-          messagesContainer.scrollTop = messagesContainer.scrollHeight;
+          if (messagesContainer) {
+            const newMessage = document.createElement('div');
+            newMessage.className = 'chat-message chat-message-admin';
+            newMessage.innerHTML = `
+              ${escapeHtml(reply)}
+              <span class="chat-message-time">just now</span>
+            `;
+            messagesContainer.appendChild(newMessage);
+            
+            // Scroll to bottom
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+          }
           
           // If the status was pending, update it to responded
           if (data.chat.status === 'responded') {
-            // Update status in UI
-            document.querySelector('.chat-detail-status').textContent = 'Responded';
-            document.querySelector('.chat-detail-status').className = 'chat-detail-status responded';
+            // Update status in dropdown if it exists
+            const statusSelect = document.getElementById('statusSelect');
+            if (statusSelect) {
+              statusSelect.value = 'responded';
+            }
             
-            // Update status buttons
-            const statusButtons = document.querySelector('.chat-status-buttons');
-            statusButtons.innerHTML = `
-              <button class="status-button mark-resolved" data-status="resolved">Mark as Resolved</button>
-            `;
-            
-            // Add event listener to new status button
-            document.querySelector('.mark-resolved').addEventListener('click', function() {
-              updateChatStatus(chatId, 'resolved');
-            });
+            // Update chat item in the list if it exists
+            const chatItem = document.querySelector(`.chat-item[data-id="${chatId}"]`);
+            if (chatItem) {
+              chatItem.classList.remove('pending', 'escalated');
+              chatItem.classList.add('responded');
+              
+              const statusElement = chatItem.querySelector('.chat-item-status');
+              if (statusElement) {
+                statusElement.textContent = 'Responded';
+                statusElement.classList.remove('pending', 'escalated');
+                statusElement.classList.add('responded');
+              }
+            }
           }
           
           // Refresh chat list to show the updated status
           fetchSupportChats();
+          
+          // Show a success notification
+          showNotification('Response sent successfully');
         } else {
           throw new Error(data.message || 'Failed to send reply');
         }
