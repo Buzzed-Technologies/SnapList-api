@@ -499,7 +499,7 @@ router.get('/payouts/stats', async (req, res) => {
   try {
     // Get pending payouts data
     const { data: pendingPayouts, error: pendingError } = await supabase
-      .from('payouts')
+      .from('payout_requests')
       .select('amount')
       .eq('status', 'pending');
     
@@ -515,8 +515,8 @@ router.get('/payouts/stats', async (req, res) => {
     const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString();
     
     const { data: monthlyPayouts, error: monthlyError } = await supabase
-      .from('payouts')
-      .select('amount, created_at, updated_at, status')
+      .from('payout_requests')
+      .select('amount, created_at, completed_at, status')
       .gte('created_at', firstDayOfMonth)
       .lte('created_at', lastDayOfMonth);
     
@@ -527,14 +527,14 @@ router.get('/payouts/stats', async (req, res) => {
     const monthlyCount = monthlyPayouts.length;
     
     // Calculate average processing time (for completed payouts)
-    const completedPayouts = monthlyPayouts.filter(payout => payout.status === 'paid');
+    const completedPayouts = monthlyPayouts.filter(payout => payout.status === 'completed');
     let avgProcessingDays = 0;
     
     if (completedPayouts.length > 0) {
       const processingTimes = completedPayouts.map(payout => {
         const createdDate = new Date(payout.created_at);
-        const updatedDate = new Date(payout.updated_at);
-        const diffTime = Math.abs(updatedDate - createdDate);
+        const completedDate = new Date(payout.completed_at);
+        const diffTime = Math.abs(completedDate - createdDate);
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         return diffDays;
       });
@@ -547,11 +547,11 @@ router.get('/payouts/stats', async (req, res) => {
     const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0).toISOString();
     
     const { data: prevMonthPayouts, error: prevMonthError } = await supabase
-      .from('payouts')
-      .select('created_at, updated_at, status')
+      .from('payout_requests')
+      .select('created_at, completed_at, status')
       .gte('created_at', prevMonthStart)
       .lte('created_at', prevMonthEnd)
-      .eq('status', 'paid');
+      .eq('status', 'completed');
     
     if (prevMonthError) throw prevMonthError;
     
@@ -561,8 +561,8 @@ router.get('/payouts/stats', async (req, res) => {
     if (prevMonthPayouts.length > 0) {
       const processingTimes = prevMonthPayouts.map(payout => {
         const createdDate = new Date(payout.created_at);
-        const updatedDate = new Date(payout.updated_at);
-        const diffTime = Math.abs(updatedDate - createdDate);
+        const completedDate = new Date(payout.completed_at);
+        const diffTime = Math.abs(completedDate - createdDate);
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         return diffDays;
       });
@@ -624,7 +624,7 @@ router.get('/payouts', async (req, res) => {
     
     // Start building query
     let query = supabase
-      .from('payouts')
+      .from('payout_requests')
       .select(`
         *,
         users(name)
@@ -653,10 +653,9 @@ router.get('/payouts', async (req, res) => {
       user_name: payout.users?.name || 'Unknown',
       amount: payout.amount,
       status: payout.status,
-      payment_method: payout.payment_method,
-      payment_id: payout.payment_id,
+      phone: payout.phone,
       created_at: payout.created_at,
-      updated_at: payout.updated_at
+      completed_at: payout.completed_at
     }));
     
     res.json({
@@ -689,10 +688,10 @@ router.post('/process-payout/:id', async (req, res) => {
     
     // Update payout status
     const { data: payout, error } = await supabase
-      .from('payouts')
+      .from('payout_requests')
       .update({ 
-        status: 'paid',
-        updated_at: new Date().toISOString()
+        status: 'completed',
+        completed_at: new Date().toISOString()
       })
       .eq('id', id)
       .select()
@@ -727,7 +726,7 @@ router.post('/payouts/process-all', async (req, res) => {
   try {
     // Find all pending payouts
     const { data: pendingPayouts, error: findError } = await supabase
-      .from('payouts')
+      .from('payout_requests')
       .select('id')
       .eq('status', 'pending');
     
@@ -741,12 +740,12 @@ router.post('/payouts/process-all', async (req, res) => {
       });
     }
     
-    // Update all pending payouts to paid status
+    // Update all pending payouts to completed status
     const { data: updatedPayouts, error: updateError } = await supabase
-      .from('payouts')
+      .from('payout_requests')
       .update({ 
-        status: 'paid',
-        updated_at: new Date().toISOString()
+        status: 'completed',
+        completed_at: new Date().toISOString()
       })
       .eq('status', 'pending')
       .select();
@@ -763,6 +762,69 @@ router.post('/payouts/process-all', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to process all payouts'
+    });
+  }
+});
+
+/**
+ * @api {post} /api/admin/payouts/:id/process Process a specific payout
+ * @apiDescription Mark a specific payout as processed
+ * @apiName ProcessPayout
+ * @apiGroup Admin
+ * 
+ * @apiParam {String} id Payout ID
+ * 
+ * @apiSuccess {Boolean} success Indicates if the operation was successful
+ * @apiSuccess {Object} payout The processed payout
+ */
+router.post('/payouts/:id/process', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Check if payout exists and is pending
+    const { data: existingPayout, error: findError } = await supabase
+      .from('payout_requests')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (findError) {
+      return res.status(404).json({
+        success: false,
+        message: 'Payout not found'
+      });
+    }
+    
+    if (existingPayout.status !== 'pending') {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot process payout with status '${existingPayout.status}'`
+      });
+    }
+    
+    // Update payout status
+    const { data: updatedPayout, error: updateError } = await supabase
+      .from('payout_requests')
+      .update({ 
+        status: 'completed',
+        completed_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (updateError) throw updateError;
+    
+    res.json({
+      success: true,
+      message: 'Payout processed successfully',
+      payout: updatedPayout
+    });
+  } catch (error) {
+    console.error('Error processing payout:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to process payout'
     });
   }
 });
@@ -985,69 +1047,6 @@ router.put('/support-chats/:id/status', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to update status'
-    });
-  }
-});
-
-/**
- * @api {post} /api/admin/payouts/:id/process Process a specific payout
- * @apiDescription Mark a specific payout as processed
- * @apiName ProcessPayout
- * @apiGroup Admin
- * 
- * @apiParam {String} id Payout ID
- * 
- * @apiSuccess {Boolean} success Indicates if the operation was successful
- * @apiSuccess {Object} payout The processed payout
- */
-router.post('/payouts/:id/process', async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    // Check if payout exists and is pending
-    const { data: existingPayout, error: findError } = await supabase
-      .from('payouts')
-      .select('*')
-      .eq('id', id)
-      .single();
-    
-    if (findError) {
-      return res.status(404).json({
-        success: false,
-        message: 'Payout not found'
-      });
-    }
-    
-    if (existingPayout.status !== 'pending') {
-      return res.status(400).json({
-        success: false,
-        message: `Cannot process payout with status '${existingPayout.status}'`
-      });
-    }
-    
-    // Update payout status
-    const { data: updatedPayout, error: updateError } = await supabase
-      .from('payouts')
-      .update({ 
-        status: 'paid',
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', id)
-      .select()
-      .single();
-    
-    if (updateError) throw updateError;
-    
-    res.json({
-      success: true,
-      message: 'Payout processed successfully',
-      payout: updatedPayout
-    });
-  } catch (error) {
-    console.error('Error processing payout:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to process payout'
     });
   }
 });

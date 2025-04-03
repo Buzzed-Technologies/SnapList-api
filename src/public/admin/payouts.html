@@ -786,21 +786,14 @@
           maximumFractionDigits: 2
         }).format(payout.amount);
         
-        // Determine payment method
-        let paymentMethod = 'Not specified';
-        if (payout.payment_method) {
-          if (payout.payment_method === 'zelle') paymentMethod = `Zelle: ${payout.payment_id || ''}`;
-          else if (payout.payment_method === 'paypal') paymentMethod = `PayPal: ${payout.payment_id || ''}`;
-          else if (payout.payment_method === 'venmo') paymentMethod = `Venmo: ${payout.payment_id || ''}`;
-          else if (payout.payment_method === 'cashapp') paymentMethod = `Cash App: ${payout.payment_id || ''}`;
-          else paymentMethod = payout.payment_method;
-        }
+        // Determine payment method - now using phone number
+        let paymentMethod = payout.phone || 'Not specified';
         
         // Determine status class
         let statusClass = '';
         if (payout.status === 'pending') statusClass = 'status-pending';
-        else if (payout.status === 'paid') statusClass = 'status-paid';
-        else if (payout.status === 'failed') statusClass = 'status-failed';
+        else if (payout.status === 'completed') statusClass = 'status-paid';
+        else if (payout.status === 'rejected') statusClass = 'status-failed';
         
         row.innerHTML = `
           <td>${payout.id}</td>
