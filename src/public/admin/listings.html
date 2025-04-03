@@ -482,11 +482,11 @@
       
       <div class="filter-group">
         <select class="filter-dropdown" id="statusFilter">
-          <option value="all">All Listings</option>
+          <option value="all">All Statuses</option>
           <option value="active">Active</option>
-          <option value="sold">Sold</option>
           <option value="pending">Pending</option>
-          <option value="removed">Removed</option>
+          <option value="sold">Sold</option>
+          <option value="ended">Ended</option>
         </select>
         
         <select class="filter-dropdown" id="priceFilter">
@@ -653,7 +653,7 @@
         let statusClass = 'status-active';
         if (listing.status === 'sold') statusClass = 'status-sold';
         else if (listing.status === 'pending') statusClass = 'status-pending';
-        else if (listing.status === 'removed') statusClass = 'status-removed';
+        else if (listing.status === 'ended') statusClass = 'status-removed';
         
         // Format price
         const price = new Intl.NumberFormat('en-US', { 
@@ -690,7 +690,7 @@
             <div class="listing-actions">
               <button class="action-button action-view" data-id="${listing.id}">View</button>
               <button class="action-button action-edit" data-id="${listing.id}">Edit</button>
-              ${listing.status !== 'removed' ? `<button class="action-button action-delete" data-id="${listing.id}">Remove</button>` : ''}
+              ${listing.status !== 'ended' ? `<button class="action-button action-delete" data-id="${listing.id}">Remove</button>` : ''}
             </div>
           </div>
         `;
@@ -807,7 +807,7 @@
         let statusClass = 'status-active';
         if (listing.status === 'sold') statusClass = 'status-sold';
         else if (listing.status === 'pending') statusClass = 'status-pending';
-        else if (listing.status === 'removed') statusClass = 'status-removed';
+        else if (listing.status === 'ended') statusClass = 'status-removed';
         
         // Create modal content for viewing
         const modalHTML = `
@@ -877,7 +877,7 @@
               
               <div class="listing-actions">
                 <button id="editFromView" class="primary-button" data-id="${listing.id}">Edit Listing</button>
-                ${listing.status !== 'removed' ? 
+                ${listing.status !== 'ended' ? 
                   `<button id="removeFromView" class="action-button action-delete" data-id="${listing.id}">Remove Listing</button>` : 
                   ''
                 }
@@ -1083,7 +1083,7 @@
                   <option value="active" ${listing.status === 'active' ? 'selected' : ''}>Active</option>
                   <option value="pending" ${listing.status === 'pending' ? 'selected' : ''}>Pending</option>
                   <option value="sold" ${listing.status === 'sold' ? 'selected' : ''}>Sold</option>
-                  <option value="removed" ${listing.status === 'removed' ? 'selected' : ''}>Removed</option>
+                  <option value="ended" ${listing.status === 'ended' ? 'selected' : ''}>Ended</option>
                 </select>
               </div>
               <div class="form-group">
@@ -1103,7 +1103,7 @@
                             ? img 
                             : `https://lsrdviupiuoztnccwdxk.supabase.co/storage/v1/object/public/snaplist-images/uploads/${img}`}" 
                             alt="Listing image" onerror="this.src='/img/logo.png'">
-                        </div>`
+                    </div>`
                       ).join('') : '<span>No images available</span>')
                   }
                 </div>
@@ -1347,7 +1347,7 @@
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ status: 'removed' }),
+          body: JSON.stringify({ status: 'ended' }),
           signal: controller.signal
         }).catch(err => {
           if (err.name === 'AbortError') {
@@ -1397,7 +1397,7 @@
             successModal.classList.remove('show');
             setTimeout(() => {
               successModal.remove();
-              fetchListings(); // Refresh the list
+          fetchListings(); // Refresh the list
             }, 300);
           });
         } else {
