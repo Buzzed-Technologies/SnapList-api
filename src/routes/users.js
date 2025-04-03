@@ -4,6 +4,7 @@ const notificationService = require('../services/notificationService');
 const openai = require('../config/openai');
 const { supabase } = require('../config/supabase');
 const crypto = require('crypto');
+const { auth } = require('../middleware/auth');
 
 const router = express.Router();
 
