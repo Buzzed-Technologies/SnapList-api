@@ -345,12 +345,12 @@ router.get('/listings', async (req, res) => {
       title: listing.title,
       description: listing.description,
       price: listing.price,
-      images: listing.images,
       status: listing.status,
       created_at: listing.created_at,
       updated_at: listing.updated_at,
       user_id: listing.user_id,
-      user_name: listing.users?.name || 'Unknown'
+      user_name: listing.users?.name || 'Unknown',
+      image_urls: listing.image_urls
     }));
     
     res.json({
