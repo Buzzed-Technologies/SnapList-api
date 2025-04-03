@@ -892,38 +892,61 @@
         document.body.appendChild(loadingModal);
         setTimeout(() => loadingModal.classList.add('show'), 10);
         
-        // Fetch data with timeout
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+        // Try to fetch with different API endpoints
+        let response;
+        let data;
+        let success = false;
         
-        const response = await fetch(`/api/admin/payouts/${payoutId}`, {
-          signal: controller.signal
-        }).catch(err => {
-          if (err.name === 'AbortError') {
-            throw new Error('Request timed out. The server might be unresponsive.');
+        // First try with /api/admin/payouts/[id]
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000);
+          
+          response = await fetch(`/api/admin/payouts/${payoutId}`, {
+            signal: controller.signal
+          });
+          
+          clearTimeout(timeoutId);
+          
+          if (response.ok) {
+            data = await response.json();
+            if (data.success) {
+              success = true;
+            }
           }
-          throw err;
-        });
+        } catch (err) {
+          console.warn('First endpoint attempt failed:', err);
+        }
         
-        clearTimeout(timeoutId);
+        // If first attempt failed, try with /api/admin/payout/[id]
+        if (!success) {
+          try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000);
+            
+            response = await fetch(`/api/admin/payout/${payoutId}`, {
+              signal: controller.signal
+            });
+            
+            clearTimeout(timeoutId);
+            
+            if (response.ok) {
+              data = await response.json();
+              if (data.success) {
+                success = true;
+              }
+            }
+          } catch (err) {
+            console.warn('Second endpoint attempt failed:', err);
+          }
+        }
         
         // Remove loading modal
         loadingModal.classList.remove('show');
         setTimeout(() => loadingModal.remove(), 300);
         
-        if (!response.ok) {
-          if (response.status === 404) {
-            throw new Error('Payout not found. It may have been deleted or processed.');
-          } else if (response.status === 500) {
-            throw new Error('Server error. Please try again later.');
-          } else {
-            throw new Error(`Server responded with status: ${response.status}`);
-          }
-        }
-        
-        const data = await response.json();
-        if (!data.success) {
-          throw new Error(data.message || 'Failed to fetch payout details');
+        if (!success) {
+          throw new Error('Payout not found. It may have been deleted or processed.');
         }
         
         const payout = data.payout || {
@@ -1241,37 +1264,64 @@
     // Fetch Payout Items
     async function fetchPayoutItems(payoutId) {
       try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
-        
-        const response = await fetch(`/api/admin/payouts/${payoutId}/items`, {
-          signal: controller.signal
-        }).catch(err => {
-          if (err.name === 'AbortError') {
-            throw new Error('Request timed out while loading items');
-          }
-          throw err;
-        });
-        
-        clearTimeout(timeoutId);
-        
-        if (!response.ok) {
-          if (response.status === 404) {
-            throw new Error('No items found for this payout');
-          } else {
-            throw new Error(`Server responded with status: ${response.status}`);
-          }
-        }
-        
-        const data = await response.json();
-        if (!data.success) {
-          throw new Error(data.message || 'Failed to fetch payout items');
-        }
-        
         const itemsList = document.getElementById('payoutItems');
         if (!itemsList) {
           console.warn('Items list element not found in DOM');
           return;
+        }
+        
+        // Try multiple endpoints
+        let response;
+        let data;
+        let success = false;
+        
+        // First try with /api/admin/payouts/[id]/items
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000);
+          
+          response = await fetch(`/api/admin/payouts/${payoutId}/items`, {
+            signal: controller.signal
+          });
+          
+          clearTimeout(timeoutId);
+          
+          if (response.ok) {
+            data = await response.json();
+            if (data.success) {
+              success = true;
+            }
+          }
+        } catch (err) {
+          console.warn('First items endpoint attempt failed:', err);
+        }
+        
+        // If first attempt failed, try with /api/admin/payout/[id]/items
+        if (!success) {
+          try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000);
+            
+            response = await fetch(`/api/admin/payout/${payoutId}/items`, {
+              signal: controller.signal
+            });
+            
+            clearTimeout(timeoutId);
+            
+            if (response.ok) {
+              data = await response.json();
+              if (data.success) {
+                success = true;
+              }
+            }
+          } catch (err) {
+            console.warn('Second items endpoint attempt failed:', err);
+          }
+        }
+        
+        // Check if we were successful
+        if (!success) {
+          throw new Error('Could not retrieve payout items');
         }
         
         if (!data.items || data.items.length === 0) {
@@ -1288,7 +1338,7 @@
           const imageUrl = item.image_url 
             ? (item.image_url.startsWith('http')
                 ? item.image_url
-                : `https://lsrdviupiuoztnccwdxk.supabase.co/storage/v1/object/public/snaplist-images/${item.image_url}`)
+                : `https://lsrdviupiuoztnccwdxk.supabase.co/storage/v1/object/public/snaplist-images/uploads/${item.image_url}`)
             : '/img/logo.png';
           
           // Log image URL for debugging

@@ -667,11 +667,11 @@
         const imageUrl = listing.image_url 
           ? listing.image_url.startsWith('http') 
               ? listing.image_url // Use URL directly if it's already a full URL
-              : `https://lsrdviupiuoztnccwdxk.supabase.co/storage/v1/object/public/snaplist-images/${listing.image_url}`
+              : `https://lsrdviupiuoztnccwdxk.supabase.co/storage/v1/object/public/snaplist-images/uploads/${listing.image_url}`
           : (listing.images && listing.images.length > 0 
               ? (listing.images[0].startsWith('http') 
                   ? listing.images[0] 
-                  : `https://lsrdviupiuoztnccwdxk.supabase.co/storage/v1/object/public/snaplist-images/${listing.images[0]}`)
+                  : `https://lsrdviupiuoztnccwdxk.supabase.co/storage/v1/object/public/snaplist-images/uploads/${listing.images[0]}`)
               : '/img/logo.png');
         
         // Log image URL for debugging
@@ -822,12 +822,12 @@
                 ${listing.image_url ? 
                   `<img src="${listing.image_url.startsWith('http') 
                       ? listing.image_url 
-                      : `https://lsrdviupiuoztnccwdxk.supabase.co/storage/v1/object/public/snaplist-images/${listing.image_url}`}" 
+                      : `https://lsrdviupiuoztnccwdxk.supabase.co/storage/v1/object/public/snaplist-images/uploads/${listing.image_url}`}" 
                       alt="${listing.title}" class="primary-image" onerror="this.src='/img/logo.png'">` : 
                   (listing.images && listing.images.length > 0 ? 
                     `<img src="${listing.images[0].startsWith('http') 
                         ? listing.images[0] 
-                        : `https://lsrdviupiuoztnccwdxk.supabase.co/storage/v1/object/public/snaplist-images/${listing.images[0]}`}" 
+                        : `https://lsrdviupiuoztnccwdxk.supabase.co/storage/v1/object/public/snaplist-images/uploads/${listing.images[0]}`}" 
                         alt="${listing.title}" class="primary-image" onerror="this.src='/img/logo.png'">` : 
                     `<div class="no-image">No image available</div>`
                   )
@@ -1093,7 +1093,7 @@
                     `<div class="image-item">
                       <img src="${listing.image_url.startsWith('http') 
                         ? listing.image_url 
-                        : `https://lsrdviupiuoztnccwdxk.supabase.co/storage/v1/object/public/snaplist-images/${listing.image_url}`}" 
+                        : `https://lsrdviupiuoztnccwdxk.supabase.co/storage/v1/object/public/snaplist-images/uploads/${listing.image_url}`}" 
                         alt="Listing image" onerror="this.src='/img/logo.png'">
                     </div>` : 
                     (listing.images && listing.images.length > 0 ? 
@@ -1101,7 +1101,7 @@
                         `<div class="image-item">
                           <img src="${img.startsWith('http') 
                             ? img 
-                            : `https://lsrdviupiuoztnccwdxk.supabase.co/storage/v1/object/public/snaplist-images/${img}`}" 
+                            : `https://lsrdviupiuoztnccwdxk.supabase.co/storage/v1/object/public/snaplist-images/uploads/${img}`}" 
                             alt="Listing image" onerror="this.src='/img/logo.png'">
                         </div>`
                       ).join('') : '<span>No images available</span>')

@@ -707,10 +707,24 @@
                   .then(response => {
                     if (response.ok) {
                       window.location.href = `/admin/payouts.html?id=${payoutId}`;
-                    } else {
-                      // Show an error message if the payout doesn't exist
+                    } else if (response.status === 404) {
                       alert('Could not find payout details. It may have been already processed.');
                       fetchPendingPayouts(); // Refresh the list
+                    } else {
+                      // Try alternative API path
+                      fetch(`/api/admin/payout/${payoutId}`)
+                        .then(altResponse => {
+                          if (altResponse.ok) {
+                            window.location.href = `/admin/payouts.html?id=${payoutId}`;
+                          } else {
+                            alert('Could not find payout details. It may have been already processed.');
+                            fetchPendingPayouts(); // Refresh the list
+                          }
+                        })
+                        .catch(err => {
+                          console.error('Error checking payout with alternative path:', err);
+                          alert('Error checking payout. Please try again later.');
+                        });
                     }
                   })
                   .catch(err => {
