@@ -488,6 +488,113 @@ router.put('/listings/:id/status', async (req, res) => {
 });
 
 /**
+ * @api {get} /api/admin/payouts/stats Get payout statistics
+ * @apiDescription Get statistics for payouts (pending, monthly, processing time)
+ * @apiName GetPayoutStats
+ * @apiGroup Admin
+ * 
+ * @apiSuccess {Object} data Payout statistics
+ */
+router.get('/payouts/stats', async (req, res) => {
+  try {
+    // Get pending payouts data
+    const { data: pendingPayouts, error: pendingError } = await supabase
+      .from('payouts')
+      .select('amount')
+      .eq('status', 'pending');
+    
+    if (pendingError) throw pendingError;
+    
+    // Calculate pending amount and count
+    const pendingAmount = pendingPayouts.reduce((sum, payout) => sum + parseFloat(payout.amount || 0), 0);
+    const pendingCount = pendingPayouts.length;
+    
+    // Get current month's payouts
+    const now = new Date();
+    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString();
+    
+    const { data: monthlyPayouts, error: monthlyError } = await supabase
+      .from('payouts')
+      .select('amount, created_at, updated_at, status')
+      .gte('created_at', firstDayOfMonth)
+      .lte('created_at', lastDayOfMonth);
+    
+    if (monthlyError) throw monthlyError;
+    
+    // Calculate monthly amount and count
+    const monthlyAmount = monthlyPayouts.reduce((sum, payout) => sum + parseFloat(payout.amount || 0), 0);
+    const monthlyCount = monthlyPayouts.length;
+    
+    // Calculate average processing time (for completed payouts)
+    const completedPayouts = monthlyPayouts.filter(payout => payout.status === 'paid');
+    let avgProcessingDays = 0;
+    
+    if (completedPayouts.length > 0) {
+      const processingTimes = completedPayouts.map(payout => {
+        const createdDate = new Date(payout.created_at);
+        const updatedDate = new Date(payout.updated_at);
+        const diffTime = Math.abs(updatedDate - createdDate);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays;
+      });
+      
+      avgProcessingDays = processingTimes.reduce((sum, days) => sum + days, 0) / processingTimes.length;
+    }
+    
+    // Get previous month's data to calculate processing time change
+    const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
+    const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0).toISOString();
+    
+    const { data: prevMonthPayouts, error: prevMonthError } = await supabase
+      .from('payouts')
+      .select('created_at, updated_at, status')
+      .gte('created_at', prevMonthStart)
+      .lte('created_at', prevMonthEnd)
+      .eq('status', 'paid');
+    
+    if (prevMonthError) throw prevMonthError;
+    
+    // Calculate previous month's average processing time
+    let prevAvgProcessingDays = 0;
+    
+    if (prevMonthPayouts.length > 0) {
+      const processingTimes = prevMonthPayouts.map(payout => {
+        const createdDate = new Date(payout.created_at);
+        const updatedDate = new Date(payout.updated_at);
+        const diffTime = Math.abs(updatedDate - createdDate);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays;
+      });
+      
+      prevAvgProcessingDays = processingTimes.reduce((sum, days) => sum + days, 0) / processingTimes.length;
+    }
+    
+    // Calculate processing time change
+    let processingDaysChange = 0;
+    if (prevAvgProcessingDays > 0) {
+      processingDaysChange = Math.round((avgProcessingDays - prevAvgProcessingDays) * 10) / 10;
+    }
+    
+    res.json({
+      success: true,
+      pendingAmount,
+      pendingCount,
+      monthlyAmount,
+      monthlyCount,
+      avgProcessingDays: Math.round(avgProcessingDays * 10) / 10,
+      processingDaysChange
+    });
+  } catch (error) {
+    console.error('Error fetching payout stats:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch payout statistics'
+    });
+  }
+});
+
+/**
  * @api {get} /api/admin/payouts Get all payouts
  * @apiDescription Get a paginated list of all payouts
  * @apiName GetPayouts
@@ -603,6 +710,59 @@ router.post('/process-payout/:id', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to process payout'
+    });
+  }
+});
+
+/**
+ * @api {post} /api/admin/payouts/process-all Process all pending payouts
+ * @apiDescription Mark all pending payouts as processed
+ * @apiName ProcessAllPayouts
+ * @apiGroup Admin
+ * 
+ * @apiSuccess {Boolean} success Indicates if the operation was successful
+ * @apiSuccess {Number} processed_count Number of payouts processed
+ */
+router.post('/payouts/process-all', async (req, res) => {
+  try {
+    // Find all pending payouts
+    const { data: pendingPayouts, error: findError } = await supabase
+      .from('payouts')
+      .select('id')
+      .eq('status', 'pending');
+    
+    if (findError) throw findError;
+    
+    if (pendingPayouts.length === 0) {
+      return res.json({
+        success: true,
+        message: 'No pending payouts to process',
+        processed_count: 0
+      });
+    }
+    
+    // Update all pending payouts to paid status
+    const { data: updatedPayouts, error: updateError } = await supabase
+      .from('payouts')
+      .update({ 
+        status: 'paid',
+        updated_at: new Date().toISOString()
+      })
+      .eq('status', 'pending')
+      .select();
+    
+    if (updateError) throw updateError;
+    
+    res.json({
+      success: true,
+      message: 'All pending payouts processed successfully',
+      processed_count: updatedPayouts.length
+    });
+  } catch (error) {
+    console.error('Error processing all payouts:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to process all payouts'
     });
   }
 });
@@ -825,6 +985,69 @@ router.put('/support-chats/:id/status', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to update status'
+    });
+  }
+});
+
+/**
+ * @api {post} /api/admin/payouts/:id/process Process a specific payout
+ * @apiDescription Mark a specific payout as processed
+ * @apiName ProcessPayout
+ * @apiGroup Admin
+ * 
+ * @apiParam {String} id Payout ID
+ * 
+ * @apiSuccess {Boolean} success Indicates if the operation was successful
+ * @apiSuccess {Object} payout The processed payout
+ */
+router.post('/payouts/:id/process', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Check if payout exists and is pending
+    const { data: existingPayout, error: findError } = await supabase
+      .from('payouts')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (findError) {
+      return res.status(404).json({
+        success: false,
+        message: 'Payout not found'
+      });
+    }
+    
+    if (existingPayout.status !== 'pending') {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot process payout with status '${existingPayout.status}'`
+      });
+    }
+    
+    // Update payout status
+    const { data: updatedPayout, error: updateError } = await supabase
+      .from('payouts')
+      .update({ 
+        status: 'paid',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (updateError) throw updateError;
+    
+    res.json({
+      success: true,
+      message: 'Payout processed successfully',
+      payout: updatedPayout
+    });
+  } catch (error) {
+    console.error('Error processing payout:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to process payout'
     });
   }
 });

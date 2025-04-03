@@ -298,4 +298,89 @@ Keep responses concise, helpful, and focused on helping the user understand how 
   }
 });
 
+/**
+ * @route GET /api/users/:id/chat/support/history
+ * @desc Get user's support chat history
+ * @access Public
+ */
+router.get('/:id/chat/support/history', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { limit = 20 } = req.query;
+    
+    // Get user support chat history
+    const { data: chats, error } = await supabase
+      .from('support_chats')
+      .select('*')
+      .eq('user_id', id)
+      .order('created_at', { ascending: false })
+      .limit(parseInt(limit));
+    
+    if (error) {
+      console.error(`Error fetching support chat history for user ${id}:`, error);
+      return res.status(500).json({
+        success: false,
+        message: `Failed to fetch support chat history: ${error.message}`
+      });
+    }
+    
+    // Transform the chats data to include unread flag
+    // Consider a chat unread if it has an admin_response but the user hasn't seen it
+    const formattedChats = chats.map(chat => ({
+      ...chat,
+      unread: chat.admin_response && !chat.read_at
+    }));
+    
+    res.status(200).json({
+      success: true,
+      chats: formattedChats
+    });
+  } catch (error) {
+    console.error(`Error in GET /users/${req.params.id}/chat/support/history:`, error);
+    res.status(500).json({
+      success: false,
+      message: `Failed to fetch support chat history: ${error.message}`
+    });
+  }
+});
+
+/**
+ * @route POST /api/users/:id/chat/support/:chatId/read
+ * @desc Mark a support chat as read
+ * @access Public
+ */
+router.post('/:id/chat/support/:chatId/read', async (req, res) => {
+  try {
+    const { id, chatId } = req.params;
+    
+    // Update the chat to mark it as read
+    const { data, error } = await supabase
+      .from('support_chats')
+      .update({
+        read_at: new Date().toISOString()
+      })
+      .eq('id', chatId)
+      .eq('user_id', id);
+    
+    if (error) {
+      console.error(`Error marking support chat ${chatId} as read:`, error);
+      return res.status(500).json({
+        success: false,
+        message: `Failed to mark chat as read: ${error.message}`
+      });
+    }
+    
+    res.status(200).json({
+      success: true,
+      message: 'Chat marked as read'
+    });
+  } catch (error) {
+    console.error(`Error in POST /users/${req.params.id}/chat/support/${req.params.chatId}/read:`, error);
+    res.status(500).json({
+      success: false,
+      message: `Failed to mark chat as read: ${error.message}`
+    });
+  }
+});
+
 module.exports = router; 
