@@ -2032,36 +2032,71 @@
     // Initialize notification sound
     function initNotificationSound() {
       try {
-        // Use a simple, reliable base64 audio format
-        const base64Sound = 'data:audio/wav;base64,UklGRnQGAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YU8GAACBgIF/gn6Df4B+gn2EfYN8g3yAfX5+fXx9fXx9fH18fX19fX19fn1+fn1+f31/f35/f4B+gX6CfYN+hH2Ef4V/h4GIg4qFjIeMiY2JjYmNiY2JjYmMin+JfIV5gnmAeH96fnt+fH19fX19fHx9e3t7e3t7e3t7fHx9fX5+f3+AgIGBgoKDgoSChIOEgoSChIKEgYOBgoGBgIGAgX+Bf4B/gH+AgICBgYKCg4OEhIWFhoaHh4iIiYmJiYqKioqKioqKiYmJiIiHh4aGhYWEhIODgoKBgYCAfn58fHp6eHh3d3Z2dXV2dXZ1d3V4d3l4enl7e3x8fX1+f35/f4CAgICBgIGAgYCCgIKAg4CEgISAhICEgISAhICDgIOAg4CDgIOAg4CEgISAhYCGgIeAiICJgIqAi4CMgI2AjoCPgJCAkYCSgJOAlICVgJaAl4CYgJmAl4CYgJmAmICXgJeAlYCUgJKAkYCPgI2AjICKgIiAh4CFgISAgoCBgH9/fX17e3p5d3d1dHRzcXBvbm1sa2tqaWlqamtra2ttbW9vcXFzc3V1d3d5eXt7fX1/f4CAgYGCgoODhISEhISEhISEg4ODgoKBgYCAfn58fHt7eXl4eHd3dnZ2dnd3eHh5eXp6e3t8fH19fn5/f4CAgYGCgoKDg4SEhYWGhoeHiIiJiYmJiYmIiIeHhoaFhYSEg4OCgoGBgIB/f35+fX18fHt7e3t6enp6enp6enp6e3t7e3x8fX1+fn9/gICBgYKCg4OEhIWFhYWGhoaGhoaGhoWFhYWEhIODgoKBgYCAfn59fXt7enp4eHd3dnZ1dXV1dXV1dXZ2d3d4eHl5enp7e3x8fX1+fn9/gICBgYGBgoKCgoKCgoKCgYGBgYCAgH9/fn58fHt7enp5eXh4eHh4eHh4eXl5eXp6e3t8fH19fn5/f4CAgYGCgoODhISFhYWFhoaGhoaGhoaGhoaFhYWFhISDg4KCgYGAgH9/fn58fHt7enp5eXh4d3d3d3d3d3d3d3h4eHh5eXp6e3t8fH19fn5/f4CAgYGCgoKDg4ODg4ODg4ODgoKCgYGAgH9/fn58fHt7enp5eXh4eHh3d3h4eHh5eXp6e3t8fH19fn5/f4CAgYGCgoODhISFhYWFhoaGhoaGhoaGhYWFhISEg4OCgoGBgIB/f35+fX17e3p6eXl4eHd3d3d2dnZ2dnZ3d3d3eHh5eXp6e3t8fH19fn5/f4CAgYGCgoODhISDg4SEhISEhIODg4OCgoKBgYCAgH9/fn5+fX19fHx8fHx8fHx8fHx8fHx9fX19fn5+fn9/f4CAgICBgYGBgoKCgoKCgoKCgoKCgoGBgYGBgICAf39/f35+fn5+fn5+fn5+fn5+fn5+fn5+fn5+fn5+fn9/f39/f39/f39/f39/f39/f39/f39/fn5+fn5+fn19fX19fX19fX19fX19fX19fX19fX19fn5+fn9/f39/gICAgICBgYGBgYGBgYGBgYGBgYGBgYCAgICAgH9/f39/f35+fn5+fn5+fn5+fn5+fn5+fn5+fn5+f39/f39/f3+AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgH9/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/';
+        // Use a very simple beep sound (this is a super tiny MP3)
+        const base64Sound = 'data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA/+M4wAAAAAAAAAAAAEluZm8AAAAPAAAAAwAAAbAAkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwP////////////////////////////////8AAAAATGF2YzU4LjU0AAAAAAAAAAAAAAAAJAYAAAAAAAAAAbARiyxl/+MYxAAAAANIAAAAAExBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV/+MYxDsAAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV';
         
         notificationSound = new Audio(base64Sound);
-        notificationSound.preload = 'auto';
         
-        // Listen for success and error during load
-        notificationSound.addEventListener('canplaythrough', function() {
-          console.log('Notification sound loaded successfully');
-        });
+        // Set volume to moderate level
+        notificationSound.volume = 0.5;
         
-        notificationSound.addEventListener('error', function(e) {
-          console.error('Error loading notification sound:', e);
-          console.error('Audio error code:', notificationSound.error ? notificationSound.error.code : 'unknown');
-        });
-        
+        // Pre-load the sound
         notificationSound.load();
+        
+        // We need to prime the audio API on first user interaction
+        const unlockAudio = () => {
+          // Create and play a silent sound first
+          const silentSound = new Audio("data:audio/mp3;base64,SUQzBAAAAAAAI1TSU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA/+1AAA==");
+          silentSound.volume = 0.1; // Very low volume
+          
+          silentSound.play().then(() => {
+            console.log("Audio context unlocked");
+            // Try playing the notification sound once to ensure it's loaded
+            notificationSound.play().then(() => {
+              console.log("Notification sound primed");
+              notificationSound.pause();
+              notificationSound.currentTime = 0;
+            }).catch(e => {
+              console.warn("Couldn't prime notification sound", e);
+            });
+            
+            // Remove listeners once unlocked
+            document.removeEventListener('click', unlockAudio);
+            document.removeEventListener('touchstart', unlockAudio);
+          }).catch(e => {
+            console.warn("Couldn't unlock audio context", e);
+          });
+        };
+        
+        // Add listeners for both click and touch events to ensure it works on all devices
+        document.addEventListener('click', unlockAudio, { once: false });
+        document.addEventListener('touchstart', unlockAudio, { once: false });
+        
+        // Add a function to play the sound safely
+        notificationSound.playSound = function() {
+          try {
+            this.currentTime = 0;
+            return this.play();
+          } catch (e) {
+            console.warn("Error playing notification sound:", e);
+            return Promise.reject(e);
+          }
+        };
+        
         console.log('Notification sound initialized');
       } catch (e) {
-        console.error('Error setting up notification sound:', e);
+        console.error('Error initializing notification sound:', e);
+        // Fallback to a simpler implementation if needed
+        notificationSound = {
+          playSound: function() {
+            console.log('Notification sound fallback');
+            return Promise.resolve();
+          }
+        };
       }
     }
 
-    // Initialize a fallback notification sound using a base64 encoded sound
-    function initFallbackNotificationSound() {
-      // This function is no longer needed as we're using a direct approach
-      console.log('Using direct audio initialization');
-    }
-
-    // Play notification sound with retry mechanism
+    // Play notification sound
     function playNotificationSound() {
       if (!notificationSound) {
         console.warn('Notification sound not initialized');
@@ -2069,27 +2104,30 @@
       }
       
       try {
-        // Reset sound to beginning
-        notificationSound.currentTime = 0;
+        // Clone the audio node for better playback reliability
+        const soundToPlay = notificationSound.cloneNode();
         
-        // Try to play
-        notificationSound.play()
-          .then(() => console.log('Notification sound played successfully'))
-          .catch(error => {
-            console.warn('Error playing notification sound:', error);
-            
-            // Try creating a new audio instance on failure
-            try {
-              const base64Sound = 'data:audio/wav;base64,UklGRnQGAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YU8GAACBgIF/gn6Df4B+gn2EfYN8g3yAfX5+fXx9fXx9fH18fX19fX19fn1+fn1+f31/f35/f4B+gX6CfYN+hH2Ef4V/h4GIg4qFjIeMiY2JjYmNiY2JjYmMin+JfIV5gnmAeH96fnt+fH19fX19fHx9e3t7e3t7e3t7fHx9fX5+f3+AgIGBgoKDgoSChIOEgoSChIKEgYOBgoGBgIGAgX+Bf4B/gH+AgICBgYKCg4OEhIWFhoaHh4iIiYmJiYqKioqKioqKiYmJiIiHh4aGhYWEhIODgoKBgYCAfn58fHp6eHh3d3Z2dXV2dXZ1d3V4d3l4enl7e3x8fX1+f35/f4CAgICBgIGAgYCCgIKAg4CEgISAhICEgISAhICDgIOAg4CDgIOAg4CEgISAhYCGgIeAiICJgIqAi4CMgI2AjoCPgJCAkYCSgJOAlICVgJaAl4CYgJmAl4CYgJmAmICXgJeAlYCUgJKAkYCPgI2AjICKgIiAh4CFgISAgoCBgH9/fX17e3p5d3d1dHRzcXBvbm1sa2tqaWlqamtra2ttbW9vcXFzc3V1d3d5eXt7fX1/f4CAgYGCgoODhISEhISEhISEg4ODgoKBgYCAfn58fHt7eXl4eHd3dnZ2dnd3eHh5eXp6e3t8fH19fn5/f4CAgYGCgoKDg4SEhYWGhoeHiIiJiYmJiYmIiIeHhoaFhYSEg4OCgoGBgIB/f35+fX18fHt7e3t6enp6enp6enp6e3t7e3x8fX1+fn9/gICBgYKCg4OEhIWFhYWGhoaGhoaGhoWFhYWEhIODgoKBgYCAfn59fXt7enp4eHd3dnZ1dXV1dXV1dXZ2d3d4eHl5enp7e3x8fX1+fn9/gICBgYGBgoKCgoKCgoKCgYGBgYCAgH9/fn58fHt7enp5eXh4eHh4eHh4eXl5eXp6e3t8fH19fn5/f4CAgYGCgoODhISFhYWFhoaGhoaGhoaGhoaFhYWFhISDg4KCgYGAgH9/fn58fHt7enp5eXh4d3d3d3d3d3d3d3h4eHh5eXp6e3t8fH19fn5/f4CAgYGCgoKDg4ODg4ODg4ODgoKCgYGAgH9/fn58fHt7enp5eXh4eHh3d3h4eHh5eXp6e3t8fH19fn5/f4CAgYGCgoODhISFhYWFhoaGhoaGhoaGhYWFhISEg4OCgoGBgIB/f35+fX17e3p6eXl4eHd3d3d2dnZ2dnZ3d3d3eHh5eXp6e3t8fH19fn5/f4CAgYGCgoODhISDg4SEhISEhIODg4OCgoKBgYCAgH9/fn5+fX19fHx8fHx8fHx8fHx8fHx9fX19fn5+fn9/f4CAgICBgYGBgoKCgoKCgoKCgoKCgoGBgYGBgICAf39/f35+fn5+fn5+fn5+fn5+fn5+fn5+fn5+fn5+fn9/f39/f39/f39/f39/f39/f39/f39/fn5+fn5+fn19fX19fX19fX19fX19fX19fX19fX19fn5+fn9/f39/gICAgICBgYGBgYGBgYGBgYGBgYGBgYCAgICAgH9/f39/f35+fn5+fn5+fn5+fn5+fn5+fn5+fn5+f39/f39/f3+AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgH9/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/';
-              const tempSound = new Audio(base64Sound);
-              tempSound.play();
-            } catch (innerError) {
-              console.error('Fallback audio creation failed:', innerError);
-            }
-          });
+        // Play the sound
+        soundToPlay.play().then(() => {
+          console.log('Notification sound played successfully');
+        }).catch(error => {
+          console.warn('Error playing notification sound:', error);
+          
+          // Only attempt to create a new audio instance if it was a NotAllowedError
+          if (error.name === 'NotAllowedError') {
+            // User hasn't interacted yet, just log it
+            console.log('Audio not allowed yet - waiting for user interaction');
+          }
+        });
       } catch (error) {
         console.error('Error in playNotificationSound:', error);
       }
+    }
+
+    // Initialize a fallback notification sound using a base64 encoded sound
+    function initFallbackNotificationSound() {
+      // This function is no longer needed as we're using a direct approach
+      console.log('Using direct audio initialization');
     }
     
     // Initialize

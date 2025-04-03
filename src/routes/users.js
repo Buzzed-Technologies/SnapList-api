@@ -197,6 +197,7 @@ router.post('/:id/chat/support', async (req, res) => {
     }
     
     // If conversation_id is provided, check if the conversation is already escalated
+    let isAlreadyEscalated = false;
     if (conversation_id) {
       const { data: existingConversation, error: checkError } = await supabase
         .from('support_chats')
@@ -206,12 +207,13 @@ router.post('/:id/chat/support', async (req, res) => {
         .limit(1);
       
       if (!checkError && existingConversation && existingConversation.length > 0) {
+        isAlreadyEscalated = true;
+        
         // This conversation is already escalated, no AI response should be generated
-        // Store the message but don't generate AI response
+        // Store the message only for admin viewing
         const insertData = {
           user_id: id,
           message,
-          ai_response: "This conversation has been escalated to our support team. A customer service representative will respond to you soon.",
           status: 'escalated',
           conversation_id: conversation_id
         };
@@ -227,25 +229,47 @@ router.post('/:id/chat/support', async (req, res) => {
           return res.status(500).json({ success: false, message: 'Failed to store chat message' });
         }
         
-        // Return the escalation message to the user
+        // Return success with no AI response since this is now waiting for admin
         return res.status(200).json({
           success: true,
-          response: insertData.ai_response,
           chatId: chatData[0].id,
           conversationId: chatData[0].conversation_id,
-          escalated: true
+          escalated: true,
+          waitingForAdmin: true
         });
       }
     }
     
-    // Process the message with OpenAI
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        {
-          role: "system",
-          content: `You are a helpful support assistant for SnapList, an app that helps people list items for sale on marketplaces like eBay and Facebook Marketplace.
-          
+    // If we need to generate AI response
+    if (!isAlreadyEscalated) {
+      // Check if user is directly asking for a human/agent
+      const requestsHumanPatterns = [
+        /speak (with|to) (a|an) (human|agent|person|representative)/i,
+        /talk (with|to) (a|an) (human|agent|person|representative)/i,
+        /connect (with|to) (a|an) (human|agent|person|representative)/i,
+        /real person/i,
+        /human support/i,
+        /live agent/i,
+        /escalate/i
+      ];
+      
+      const isRequestingHuman = requestsHumanPatterns.some(pattern => pattern.test(message));
+      
+      let aiResponse;
+      let needsEscalation = false;
+      
+      if (isRequestingHuman) {
+        // Ask why they need a human agent first
+        aiResponse = "I'd be happy to connect you with a human agent. To help us route your request properly, could you please tell me what specific issue you're trying to resolve? I might be able to help you directly.";
+      } else {
+        // Process the message with OpenAI
+        const response = await openai.chat.completions.create({
+          model: "gpt-4o",
+          messages: [
+            {
+              role: "system",
+              content: `You are a helpful support assistant for SnapList, an app that helps people list items for sale on marketplaces like eBay and Facebook Marketplace.
+              
 The app allows users to:
 - Take photos of items they want to sell
 - Get AI-generated listings with titles, descriptions and pricing
@@ -301,119 +325,107 @@ Frequently Asked Questions:
 10. What types of items sell best on SnapList?
     - Clothing, electronics, home goods, and collectibles typically sell well on our platform.
 
-If you cannot answer a user's question or they have a specific issue that requires human attention, tell the user "I'll escalate this to our support team, and someone will review your message soon." DO NOT provide any external email addresses. Only escalate if you absolutely cannot help with the user's question or if they specifically request to speak with a human agent.
+Try your best to answer the user's question. Be helpful, friendly and concise. Only recommend escalation to human support if:
+1. You genuinely cannot answer their specific question or solve their problem
+2. Their issue involves account-specific issues that need admin access
+3. They explicitly ask to speak to a human agent after you've tried to help
+4. They need technical support for a complex issue
 
-Keep responses concise, helpful, and focused on helping the user understand how to use the app.`
-        },
-        {
-          role: "user",
-          content: message
-        }
-      ],
-      max_tokens: 500
-    });
-    
-    const aiResponse = response.choices[0].message.content;
-    
-    // Check if we need to create a new conversation or add to existing one
-    let insertData = {
-      user_id: id,
-      message,
-      ai_response: aiResponse,
-      status: 'pending' // Admins will need to review and potentially respond
-    };
-    
-    // If conversation_id is provided, add to that conversation
-    if (conversation_id) {
-      // Verify the conversation belongs to this user
-      const { data: existingConversation, error: verifyError } = await supabase
-        .from('support_chats')
-        .select('id')
-        .eq('conversation_id', conversation_id)
-        .eq('user_id', id)
-        .limit(1);
-      
-      if (verifyError || !existingConversation || existingConversation.length === 0) {
-        // Invalid conversation ID, create new one
-        const { data: newUUID } = await supabase.rpc('gen_random_uuid');
-        insertData.conversation_id = newUUID || crypto.randomUUID();
-      } else {
-        // Valid conversation ID, use it
-        insertData.conversation_id = conversation_id;
-      }
-    } else {
-      // Generate a new UUID for conversation_id - use node's crypto if RPC fails
-      const { data: newUUID, error: uuidError } = await supabase.rpc('gen_random_uuid');
-      insertData.conversation_id = newUUID || crypto.randomUUID();
-    }
-    
-    // Store the support chat in the database
-    const { data: chatData, error: chatError } = await supabase
-      .from('support_chats')
-      .insert(insertData)
-      .select();
-      
-    if (chatError) {
-      console.error('Error storing support chat:', chatError);
-      // Continue anyway to return the AI response to the user
-    }
-    
-    // Check if this message needs to be escalated to admin support
-    // Look for phrases indicating escalation in the AI response
-    const escalationPhrases = [
-      "I'll escalate this to our support team",
-      "someone will review your message",
-      "escalate this to our team",
-      "requires human attention",
-      "I'll escalate this"
-    ];
-    
-    const needsEscalation = escalationPhrases.some(phrase => aiResponse.includes(phrase));
-    
-    // Update status if escalation is needed
-    if (needsEscalation && chatData && chatData.length > 0) {
-      // Using a more direct update to ensure it's set to escalated
-      const { data: updatedChat, error: updateError } = await supabase
-        .from('support_chats')
-        .update({ 
-          status: 'escalated',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', chatData[0].id)
-        .select()
-        .single();
-      
-      if (updateError) {
-        console.error('Error updating chat status to escalated:', updateError);
-      } else {
-        console.log(`Successfully escalated chat ${chatData[0].id} to admin support`);
+If escalation is absolutely necessary, include this in your response: "I'll escalate this to our support team, and someone will review your message soon."
+
+Important: Never provide external contact information or emails. Keep users in the app for support.`
+            },
+            {
+              role: "user",
+              content: message
+            }
+          ],
+          max_tokens: 500
+        });
         
-        // If this is part of a conversation, update all messages in the conversation
-        if (insertData.conversation_id) {
-          const { error: conversationUpdateError } = await supabase
-            .from('support_chats')
-            .update({ 
-              status: 'escalated',
-              updated_at: new Date().toISOString()
-            })
-            .eq('conversation_id', insertData.conversation_id);
-          
-          if (conversationUpdateError) {
-            console.error('Error updating conversation status to escalated:', conversationUpdateError);
-          } else {
-            console.log(`Successfully escalated conversation ${insertData.conversation_id} to admin support`);
-          }
+        aiResponse = response.choices[0].message.content;
+        
+        // Check if this message needs to be escalated to admin support
+        // Look for phrases indicating escalation in the AI response
+        const escalationPhrases = [
+          "I'll escalate this to our support team",
+          "someone will review your message",
+          "escalate this to our team",
+          "requires human attention",
+          "I'll escalate this"
+        ];
+        
+        needsEscalation = escalationPhrases.some(phrase => aiResponse.includes(phrase));
+      }
+      
+      // Check if we need to create a new conversation or add to existing one
+      let insertData = {
+        user_id: id,
+        message,
+        ai_response: aiResponse,
+        status: needsEscalation ? 'escalated' : 'pending' 
+      };
+      
+      // If conversation_id is provided, add to that conversation
+      if (conversation_id) {
+        // Verify the conversation belongs to this user
+        const { data: existingConversation, error: verifyError } = await supabase
+          .from('support_chats')
+          .select('id')
+          .eq('conversation_id', conversation_id)
+          .eq('user_id', id)
+          .limit(1);
+        
+        if (verifyError || !existingConversation || existingConversation.length === 0) {
+          // Invalid conversation ID, create new one
+          const { data: newUUID } = await supabase.rpc('gen_random_uuid');
+          insertData.conversation_id = newUUID || crypto.randomUUID();
+        } else {
+          // Valid conversation ID, use it
+          insertData.conversation_id = conversation_id;
+        }
+      } else {
+        // Generate a new UUID for conversation_id - use node's crypto if RPC fails
+        const { data: newUUID, error: uuidError } = await supabase.rpc('gen_random_uuid');
+        insertData.conversation_id = newUUID || crypto.randomUUID();
+      }
+      
+      // Store the support chat in the database
+      const { data: chatData, error: chatError } = await supabase
+        .from('support_chats')
+        .insert(insertData)
+        .select();
+        
+      if (chatError) {
+        console.error('Error storing support chat:', chatError);
+        // Continue anyway to return the AI response to the user
+      }
+      
+      // If escalation is needed, update all messages in the conversation
+      if (needsEscalation && insertData.conversation_id) {
+        const { error: conversationUpdateError } = await supabase
+          .from('support_chats')
+          .update({ 
+            status: 'escalated',
+            updated_at: new Date().toISOString()
+          })
+          .eq('conversation_id', insertData.conversation_id);
+        
+        if (conversationUpdateError) {
+          console.error('Error updating conversation status to escalated:', conversationUpdateError);
+        } else {
+          console.log(`Successfully escalated conversation ${insertData.conversation_id} to admin support`);
         }
       }
+      
+      res.status(200).json({
+        success: true,
+        response: aiResponse,
+        chatId: chatData && chatData.length > 0 ? chatData[0].id : null,
+        conversationId: chatData && chatData.length > 0 ? chatData[0].conversation_id : insertData.conversation_id,
+        escalated: needsEscalation
+      });
     }
-    
-    res.status(200).json({
-      success: true,
-      response: aiResponse,
-      chatId: chatData && chatData.length > 0 ? chatData[0].id : null,
-      conversationId: chatData && chatData.length > 0 ? chatData[0].conversation_id : insertData.conversation_id,
-      escalated: needsEscalation
-    });
   } catch (error) {
     console.error(`Error in POST /users/${req.params.id}/chat/support:`, error);
     res.status(500).json({ success: false, message: `Failed to process support chat: ${error.message}` });
