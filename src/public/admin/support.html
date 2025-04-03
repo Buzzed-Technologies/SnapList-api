@@ -358,12 +358,49 @@
       overflow: hidden;
     }
     
-    .chat-detail-header {
+    .chat-header {
       padding: 16px 20px;
       border-bottom: 1px solid var(--border-color);
       display: flex;
       align-items: center;
       justify-content: space-between;
+      background-color: var(--card-background);
+    }
+    
+    .chat-header .user-info {
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .chat-header .user-info h3 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    
+    .chat-header .chat-date {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-right: 12px;
+    }
+    
+    .chat-header .status-selector {
+      display: flex;
+      align-items: center;
+    }
+    
+    .chat-header .status-selector label {
+      margin-right: 8px;
+      font-size: 14px;
+    }
+    
+    .chat-header .status-selector select {
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 14px;
+      border: 1px solid var(--border-color);
+      background-color: var(--card-background);
+      color: var(--text-primary);
     }
     
     .chat-user-info {
@@ -739,6 +776,72 @@
         box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
       }
     }
+    
+    /* Additional message styles */
+    .chat-message .chat-message-time {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+      display: block;
+    }
+    
+    /* Reply section */
+    .chat-reply {
+      padding: 16px;
+      border-top: 1px solid var(--border-color);
+    }
+    
+    .chat-reply .reply-header {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    
+    #chatReplyInput {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      min-height: 80px;
+      margin-bottom: 12px;
+      background-color: var(--background-color);
+      color: var(--text-primary);
+      resize: vertical;
+    }
+    
+    #chatReplySend {
+      padding: 10px 16px;
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    
+    #chatReplySend:hover {
+      background-color: var(--primary-hover);
+    }
+    
+    /* Error message styling */
+    .error-message {
+      padding: 20px;
+      text-align: center;
+      color: var(--danger-color);
+    }
+    
+    .error-message p {
+      margin-bottom: 12px;
+    }
+    
+    .error-message button {
+      padding: 8px 16px;
+      background-color: var(--background-color);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -935,12 +1038,12 @@
       try {
         const response = await fetch('/api/admin/auth/check');
         const data = await response.json();
-        if (!data.authenticated) {
-          window.location.href = '/admin/login.html';
-        }
+          if (!data.authenticated) {
+            window.location.href = '/admin/login.html';
+          }
       } catch (error) {
-        console.error('Error checking authentication:', error);
-        window.location.href = '/admin/login.html';
+          console.error('Error checking authentication:', error);
+          window.location.href = '/admin/login.html';
       }
     }
     
@@ -1073,9 +1176,9 @@
       Array.from(conversationMap.values())
         .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
         .forEach(chat => {
-          const chatItem = document.createElement('div');
+        const chatItem = document.createElement('div');
           chatItem.className = `chat-item ${chat.status}`;
-          chatItem.dataset.id = chat.id;
+        chatItem.dataset.id = chat.id;
           chatItem.dataset.conversationId = chat.conversation_id || chat.id;
           
           // Get short preview of the message (max 50 chars)
@@ -1101,50 +1204,55 @@
           const messageCountDisplay = chat.message_count && chat.message_count > 1
             ? `<span class="message-count" title="${chat.message_count} messages in this conversation">${chat.message_count}</span>`
             : '';
-          
-          chatItem.innerHTML = `
+        
+        chatItem.innerHTML = `
             <div class="chat-item-content">
               <div class="chat-item-header">
                 <div class="chat-item-user">${chat.users?.name || 'Unknown User'}</div>
                 <div class="chat-item-time">${formattedDate}</div>
-              </div>
+          </div>
               <div class="chat-item-preview">${messagePreview}</div>
               <div class="chat-item-footer">
                 <div class="chat-item-status ${statusClass}">${statusText}</div>
                 ${messageCountDisplay}
               </div>
             </div>
-          `;
-          
-          chatItem.addEventListener('click', () => {
+        `;
+        
+        chatItem.addEventListener('click', () => {
             // Deselect all other items
-            document.querySelectorAll('.chat-item').forEach(item => {
-              item.classList.remove('active');
-            });
-            
+          document.querySelectorAll('.chat-item').forEach(item => {
+            item.classList.remove('active');
+          });
+          
             // Select this item
-            chatItem.classList.add('active');
-            
+          chatItem.classList.add('active');
+          
             // Set as current chat
-            currentChatId = chat.id;
-            
+          currentChatId = chat.id;
+          
             // Load chat detail - if we have a conversation_id, load the full conversation
             if (chat.conversation_id) {
               loadConversationDetail(chat);
             } else {
-              loadChatDetail(chat);
+          loadChatDetail(chat);
             }
             
             // Update URL with the chat ID for sharing/bookmarking
             window.history.replaceState({}, '', `?id=${chat.id}`);
-          });
-          
-          chatList.appendChild(chatItem);
         });
+        
+        chatList.appendChild(chatItem);
+      });
     }
     
     // Load Chat Detail
     function loadChatDetail(chat) {
+      if (!chat) {
+        console.error('Attempted to load chat detail with undefined chat object');
+        return;
+      }
+      
       const chatDetail = document.getElementById('chatDetail');
       
       // Set current conversation ID for auto-refresh
@@ -1160,13 +1268,19 @@
         formattedUpdated = updated.toLocaleString('en-US', dateOptions);
       }
       
+      // Format status display
+      const statusClass = chat.status || 'pending';
+      const statusDisplay = chat.status ? (chat.status.charAt(0).toUpperCase() + chat.status.slice(1)) : 'Pending';
+      
       // Generate the HTML for the chat detail
       chatDetail.innerHTML = `
         <div class="chat-header">
           <div class="user-info">
             <h3>${chat.users?.name || 'Unknown User'}</h3>
-            <span class="chat-date">Created: ${formattedCreated}</span>
-            <span class="chat-date">Last Updated: ${formattedUpdated}</span>
+            <div class="chat-dates">
+              <span class="chat-date">Created: ${formattedCreated}</span>
+              <span class="chat-date">Last Updated: ${formattedUpdated}</span>
+            </div>
           </div>
           <div class="chat-actions">
             <div class="status-selector">
@@ -1182,17 +1296,17 @@
         </div>
         <div class="chat-messages" id="chatMessages">
           <div class="chat-message chat-message-user">
-            ${chat.message}
+            ${escapeHtml(chat.message)}
             <span class="chat-message-time">${formattedCreated}</span>
           </div>
-          <div class="chat-message">
-            ${chat.ai_response}
+          <div class="chat-message ${chat.hide_ai_response ? 'hidden-ai' : ''}">
+            ${escapeHtml(chat.ai_response)}
             <span class="chat-message-time">${formattedCreated}</span>
             <button class="toggle-ai-button" id="toggleAiButton">${chat.hide_ai_response ? 'Show AI Response' : 'Hide AI Response'}</button>
           </div>
           ${chat.admin_response ? `
             <div class="chat-message chat-message-admin">
-              ${chat.admin_response}
+              ${escapeHtml(chat.admin_response)}
               <span class="chat-message-time">${formattedUpdated}</span>
             </div>
           ` : ''}
@@ -1218,10 +1332,24 @@
       document.getElementById('chatReplySend').addEventListener('click', function() {
         sendAdminReply(chat.id);
       });
+      
+      // Add event listener for Enter key in the textarea
+      document.getElementById('chatReplyInput').addEventListener('keydown', function(e) {
+        // Check if Enter is pressed without Shift
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault(); // Prevent the default action (newline)
+          sendAdminReply(chat.id);
+        }
+      });
     }
     
     // Load the entire conversation for a chat
     function loadConversationDetail(chat) {
+      if (!chat) {
+        console.error('Attempted to load conversation detail with undefined chat object');
+        return;
+      }
+      
       // Set current conversation ID for auto-refresh
       currentConversationId = chat.conversation_id || chat.id;
       
@@ -1244,7 +1372,13 @@
       fetch(`/api/admin/support-chats/conversation/${conversationId}`)
         .then(response => {
           if (!response.ok) {
-            throw new Error('Failed to fetch conversation');
+            if (response.status === 404) {
+              throw new Error('Conversation not found');
+            } else {
+              return response.json().then(errData => {
+                throw new Error(errData.message || 'Failed to fetch conversation');
+              });
+            }
           }
           return response.json();
         })
@@ -1270,9 +1404,10 @@
             <div class="chat-header">
               <div class="user-info">
                 <h3>${chat.users?.name || 'Unknown User'}</h3>
-                <span class="chat-date">Created: ${formattedCreated}</span>
-                <span class="chat-date">Last Updated: ${formattedUpdated}</span>
-                <span class="chat-date">Messages: ${messages.length}</span>
+                <div class="chat-dates">
+                  <span class="chat-date">Created: ${formattedCreated}</span>
+                  <span class="chat-date">Last Updated: ${formattedUpdated}</span>
+                </div>
               </div>
               <div class="chat-actions">
                 <div class="status-selector">
@@ -1297,7 +1432,7 @@
             // Add user message
             conversationHTML += `
               <div class="chat-message chat-message-user">
-                ${msg.message}
+                ${escapeHtml(msg.message)}
                 <span class="chat-message-time">${msgFormattedCreated}</span>
               </div>
             `;
@@ -1305,7 +1440,7 @@
             // Add AI response if it exists and isn't hidden
             conversationHTML += `
               <div class="chat-message ${msg.hide_ai_response ? 'hidden-ai' : ''}">
-                ${msg.ai_response}
+                ${escapeHtml(msg.ai_response)}
                 <span class="chat-message-time">${msgFormattedCreated}</span>
                 <button class="toggle-ai-button" data-id="${msg.id}">${msg.hide_ai_response ? 'Show AI Response' : 'Hide AI Response'}</button>
               </div>
@@ -1318,7 +1453,7 @@
               
               conversationHTML += `
                 <div class="chat-message chat-message-admin">
-                  ${msg.admin_response}
+                  ${escapeHtml(msg.admin_response)}
                   <span class="chat-message-time">${msgFormattedUpdated}</span>
                 </div>
               `;
@@ -1360,6 +1495,20 @@
             sendAdminReply(latestMessageId);
           });
           
+          // Add event listener for Enter key in the textarea
+          document.getElementById('chatReplyInput').addEventListener('keydown', function(e) {
+            // Check if Enter is pressed without Shift
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault(); // Prevent the default action (newline)
+              // Get the ID of the latest message in the conversation
+              const latestMessageId = messages.length > 0 
+                ? messages[messages.length - 1].id 
+                : chat.id;
+                
+              sendAdminReply(latestMessageId);
+            }
+          });
+          
           // Scroll to the bottom of the messages
           const messagesContainer = document.getElementById('chatMessages');
           messagesContainer.scrollTop = messagesContainer.scrollHeight;
@@ -1369,7 +1518,7 @@
           chatDetail.innerHTML = `
             <div class="error-message">
               <p>Error loading conversation: ${error.message}</p>
-              <button onclick="loadChatDetail(chatData.find(c => c.id === '${chat.id}'))">Try Again</button>
+              <button onclick="loadConversationDetail(chatData.find(c => c.id === '${chat.id}'))">Try Again</button>
             </div>
           `;
         });
@@ -1599,7 +1748,7 @@
       // Refresh chat list every 30 seconds
       mainListRefreshInterval = setInterval(() => {
         // Fetch the chat list silently in all cases
-        fetchChatListSilently();
+          fetchChatListSilently();
       }, 30000); // Every 30 seconds
     }
     
@@ -1721,85 +1870,98 @@
 
     // Start the auto-refresh when a chat is being viewed
     function startChatRefresh() {
-      // Clear any existing interval first
-      stopChatRefresh();
-      
-      // Start a new interval if we have a conversation ID
-      if (currentConversationId) {
-        chatRefreshInterval = setInterval(() => {
-          refreshCurrentChat();
-        }, 5000); // Refresh every 5 seconds
-      }
+        // Clear any existing interval first
+        stopChatRefresh();
+        
+        // Start a new interval if we have a conversation ID
+        if (currentConversationId) {
+            chatRefreshInterval = setInterval(() => {
+                refreshCurrentChat();
+            }, 5000); // Refresh every 5 seconds
+        }
     }
 
     // Stop the auto-refresh
     function stopChatRefresh() {
-      if (chatRefreshInterval) {
-        clearInterval(chatRefreshInterval);
-        chatRefreshInterval = null;
-      }
+        if (chatRefreshInterval) {
+            clearInterval(chatRefreshInterval);
+            chatRefreshInterval = null;
+        }
     }
 
     // Refresh the current chat
     function refreshCurrentChat() {
-      if (!currentConversationId) return;
-      
-      // Show a subtle loading indicator
-      const chatContainer = document.querySelector('#chatMessages');
+        if (!currentConversationId) return;
+        
+        // Show a subtle loading indicator
+        const chatContainer = document.querySelector('#chatMessages');
       if (!chatContainer) return;
       
-      const loadingIndicator = document.createElement('div');
-      loadingIndicator.id = 'chatRefreshIndicator';
+        const loadingIndicator = document.createElement('div');
+        loadingIndicator.id = 'chatRefreshIndicator';
       loadingIndicator.innerHTML = '<div class="refresh-spinner"></div>';
-      loadingIndicator.style.position = 'absolute';
-      loadingIndicator.style.top = '10px';
-      loadingIndicator.style.right = '10px';
-      loadingIndicator.style.opacity = '0.5';
-      
-      // Remove any existing indicator
-      const existingIndicator = document.querySelector('#chatRefreshIndicator');
-      if (existingIndicator) {
-        existingIndicator.remove();
-      }
-      
-      chatContainer.appendChild(loadingIndicator);
-      
-      // Fetch the conversation
-      fetch(`/api/admin/support-chats/conversation/${currentConversationId}`)
-        .then(response => response.json())
-        .then(data => {
-          if (data.success) {
-            // Only update if we have new messages
-            const currentMessageCount = document.querySelectorAll('.chat-message').length;
-            if (data.messages.length > currentMessageCount / 2) { // Divide by 2 because we show user and AI as separate messages
+        loadingIndicator.style.position = 'absolute';
+        loadingIndicator.style.top = '10px';
+        loadingIndicator.style.right = '10px';
+        loadingIndicator.style.opacity = '0.5';
+        
+        // Remove any existing indicator
+        const existingIndicator = document.querySelector('#chatRefreshIndicator');
+        if (existingIndicator) {
+            existingIndicator.remove();
+        }
+        
+        chatContainer.appendChild(loadingIndicator);
+        
+        // Fetch the conversation
+        fetch(`/api/admin/support-chats/conversation/${currentConversationId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Only update if we have new messages
+                    const currentMessageCount = document.querySelectorAll('.chat-message').length;
+                    if (data.messages.length > currentMessageCount / 2) { // Divide by 2 because we show user and AI as separate messages
               // If we were viewing a specific chat in detail, load the conversation again
               const chat = chatData.find(c => c.conversation_id === currentConversationId || c.id === currentConversationId);
               if (chat) {
                 loadConversationDetail(chat);
               }
-            }
-          }
-          // Remove the loading indicator
-          const indicator = document.querySelector('#chatRefreshIndicator');
-          if (indicator) {
-            indicator.remove();
-          }
-        })
-        .catch(error => {
-          console.error('Error refreshing chat:', error);
-          // Remove the loading indicator
-          const indicator = document.querySelector('#chatRefreshIndicator');
-          if (indicator) {
-            indicator.remove();
-          }
-        });
+                    }
+                }
+                // Remove the loading indicator
+                const indicator = document.querySelector('#chatRefreshIndicator');
+                if (indicator) {
+                    indicator.remove();
+                }
+            })
+            .catch(error => {
+                console.error('Error refreshing chat:', error);
+                // Remove the loading indicator
+                const indicator = document.querySelector('#chatRefreshIndicator');
+                if (indicator) {
+                    indicator.remove();
+                }
+            });
     }
-    
+
     // Initialize notification sound
     function initNotificationSound() {
       try {
         notificationSound = new Audio('/static/sounds/notification.mp3');
+        // Set preload attribute to auto
+        notificationSound.preload = 'auto';
+        
+        // Add error handler to log issues
+        notificationSound.addEventListener('error', function(e) {
+          console.error('Notification sound error:', e);
+          console.error('Audio error code:', notificationSound.error ? notificationSound.error.code : 'unknown');
+          
+          // Fallback to using a base64 encoded audio if loading from file fails
+          initFallbackNotificationSound();
+        });
+        
         notificationSound.load();
+        
         // Test preload to handle any browser security issues
         document.addEventListener('click', function triggerFirstInteraction() {
           notificationSound.volume = 0; // Mute it for the test
@@ -1810,11 +1972,29 @@
             console.log('Notification sound ready');
           }).catch(e => {
             console.warn('Could not preload notification sound:', e);
+            // Try fallback if initial load fails
+            initFallbackNotificationSound();
           });
           document.removeEventListener('click', triggerFirstInteraction);
         }, { once: true });
       } catch (e) {
         console.error('Error setting up notification sound:', e);
+        initFallbackNotificationSound();
+      }
+    }
+
+    // Initialize a fallback notification sound using a base64 encoded sound
+    function initFallbackNotificationSound() {
+      try {
+        // Short base64 encoded notification beep
+        const base64Sound = 'data:audio/mp3;base64,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';
+        
+        notificationSound = new Audio(base64Sound);
+        notificationSound.preload = 'auto';
+        notificationSound.load();
+        console.log('Fallback notification sound initialized');
+      } catch (e) {
+        console.error('Fallback notification sound initialization failed:', e);
       }
     }
 
@@ -1925,6 +2105,15 @@
       stopMainListRefresh();
       stopChatRefresh();
     });
+
+    // HTML escape function to prevent XSS
+    function escapeHtml(html) {
+      if (!html) return '';
+      
+      const div = document.createElement('div');
+      div.textContent = html;
+      return div.innerHTML;
+    }
   </script>
 </body>
 </html>

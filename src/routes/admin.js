@@ -1097,21 +1097,59 @@ router.get('/support-chats/conversation/:conversationId', async (req, res) => {
   try {
     const { conversationId } = req.params;
     
-    // Get all messages in this conversation - with explicit UUID casting
+    // Validate the conversation ID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(conversationId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid conversation ID format'
+      });
+    }
+    
+    // First check if conversation exists
+    const { count, error: countError } = await supabase
+      .from('support_chats')
+      .select('*', { count: 'exact', head: true })
+      .eq('conversation_id', conversationId);
+      
+    if (countError) {
+      console.error(`Error checking conversation ${conversationId}:`, countError);
+      return res.status(500).json({
+        success: false,
+        message: `Error checking conversation: ${countError.message}`
+      });
+    }
+    
+    if (count === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Conversation not found'
+      });
+    }
+    
+    // Get all messages in this conversation
     const { data: messages, error } = await supabase
       .from('support_chats')
       .select(`
         *,
         users(name, phone)
       `)
-      .filter('support_chats.conversation_id', 'eq', conversationId)  // Using explicit table name reference
+      .eq('conversation_id', conversationId)  // Simplified query 
       .order('created_at', { ascending: true });
     
     if (error) {
       console.error(`Error fetching conversation ${conversationId}:`, error);
       return res.status(500).json({
         success: false,
-        message: `Error fetching conversation: ${error}`
+        message: `Error fetching conversation: ${error.message}`
+      });
+    }
+    
+    // If no messages were found (shouldn't happen due to earlier check)
+    if (!messages || messages.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'No messages found in this conversation'
       });
     }
     
@@ -1123,7 +1161,7 @@ router.get('/support-chats/conversation/:conversationId', async (req, res) => {
     console.error(`Error fetching conversation ${req.params.conversationId}:`, error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch conversation'
+      message: `Failed to fetch conversation: ${error.message}`
     });
   }
 });
