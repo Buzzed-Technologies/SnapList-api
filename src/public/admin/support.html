@@ -754,13 +754,20 @@
   
   <script>
     // Global variables
-    let currentChatId = null;
-    let currentConversationId = null;
     let currentSearch = '';
     let currentFilter = 'all';
+    let currentChatId = null;
     let chatData = [];
-    let chatRefreshInterval = null;
     let mainListRefreshInterval = null;
+
+    // Date formatting options
+    const dateOptions = { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    };
     
     // Format a timestamp into a relative time string like "2 hours ago"
     function formatRelativeTime(timestamp) {
@@ -836,18 +843,17 @@
     }
     
     // Check authentication
-    function checkAuth() {
-      fetch('/api/admin/auth/check')
-        .then(response => response.json())
-        .then(data => {
-          if (!data.authenticated) {
-            window.location.href = '/admin/login.html';
-          }
-        })
-        .catch(error => {
-          console.error('Error checking authentication:', error);
+    async function checkAuth() {
+      try {
+        const response = await fetch('/api/admin/auth/check');
+        const data = await response.json();
+        if (!data.authenticated) {
           window.location.href = '/admin/login.html';
-        });
+        }
+      } catch (error) {
+        console.error('Error checking authentication:', error);
+        window.location.href = '/admin/login.html';
+      }
     }
     
     // Log out
@@ -991,12 +997,7 @@
           
           // Format the date for display
           const date = new Date(chat.created_at);
-          const formattedDate = date.toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-          });
+          const formattedDate = date.toLocaleString('en-US', dateOptions);
 
           // Convert status to a more readable format
           let statusText = chat.status.charAt(0).toUpperCase() + chat.status.slice(1);
