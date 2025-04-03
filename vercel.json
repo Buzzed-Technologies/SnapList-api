@@ -49,6 +49,10 @@
       "check": true
     },
     {
+      "src": "/invite",
+      "dest": "src/index.js"
+    },
+    {
       "src": "/terms",
       "dest": "src/index.js"
     },
