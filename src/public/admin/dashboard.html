@@ -42,12 +42,36 @@
         --primary-light: #2C1A0D;
         --primary-dark: #FF8A3F;
         --text-primary: #FFFFFF;
-        --text-secondary: #AAAAAA;
+        --text-secondary: #CCCCCC;
         --background-color: #1A1A1A;
         --card-background: #222222;
         --border-color: #333333;
         --shadow-color: rgba(0, 0, 0, 0.2);
       }
+    }
+    
+    :root.light-theme {
+      --primary-color: #FF6A00;
+      --primary-light: #FFF0E6;
+      --primary-dark: #E56000;
+      --text-primary: #1D1D1D;
+      --text-secondary: #666666;
+      --background-color: #F9F9FB;
+      --card-background: #FFFFFF;
+      --border-color: #E5E5E5;
+      --shadow-color: rgba(0, 0, 0, 0.05);
+    }
+    
+    :root.dark-theme {
+      --primary-color: #FF6A00;
+      --primary-light: #2C1A0D;
+      --primary-dark: #FF8A3F;
+      --text-primary: #FFFFFF;
+      --text-secondary: #CCCCCC;
+      --background-color: #1A1A1A;
+      --card-background: #222222;
+      --border-color: #333333;
+      --shadow-color: rgba(0, 0, 0, 0.2);
     }
     
     * {
@@ -487,6 +511,87 @@
       font-size: 12px;
       color: var(--text-secondary);
     }
+    
+    /* Theme toggle styles */
+    .theme-toggle {
+      display: flex;
+      align-items: center;
+      padding: 12px 20px;
+      margin-top: 16px;
+      margin-bottom: 16px;
+      border-top: 1px solid var(--border-color);
+      border-bottom: 1px solid var(--border-color);
+    }
+    
+    .theme-toggle-label {
+      font-size: 14px;
+      font-weight: 500;
+      margin-right: 12px;
+      color: var(--text-primary);
+    }
+    
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 46px;
+      height: 24px;
+    }
+    
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: .4s;
+      border-radius: 24px;
+    }
+    
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+    
+    input:checked + .toggle-slider {
+      background-color: var(--primary-color);
+    }
+    
+    input:checked + .toggle-slider:before {
+      transform: translateX(22px);
+    }
+    
+    .toggle-icons {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 6px;
+      box-sizing: border-box;
+      pointer-events: none;
+      color: white;
+      font-size: 12px;
+    }
+    
+    .toggle-dark-icon, .toggle-light-icon {
+      line-height: 1;
+    }
   </style>
 </head>
 <body>
@@ -527,6 +632,19 @@
         <span class="nav-item-icon">💬</span>
         Support Chats
       </a>
+    </div>
+    
+    <!-- Theme Toggle -->
+    <div class="theme-toggle">
+      <div class="theme-toggle-label">Dark Mode</div>
+      <label class="toggle-switch">
+        <input type="checkbox" id="themeToggle">
+        <div class="toggle-icons">
+          <span class="toggle-light-icon">☀️</span>
+          <span class="toggle-dark-icon">🌙</span>
+        </div>
+        <span class="toggle-slider"></span>
+      </label>
     </div>
     
     <div class="sidebar-footer">
@@ -574,7 +692,7 @@
         <div class="chart-title">Revenue Trends</div>
         <div class="chart-controls">
           <input type="text" id="revenueDateRange" class="time-filter" value="Last 30 Days" readonly>
-        </div>
+      </div>
       </div>
       <div id="revenueChart" class="chart-canvas"></div>
     </div>
@@ -592,11 +710,11 @@
               <option value="quarter">This Quarter</option>
               <option value="year">This Year</option>
             </select>
-          </div>
-        </div>
-        <div id="categoryChart" class="chart-canvas"></div>
       </div>
-      
+      </div>
+        <div id="categoryChart" class="chart-canvas"></div>
+    </div>
+    
       <!-- Active Listings Chart -->
       <div class="chart-container">
         <div class="chart-header">
@@ -607,7 +725,7 @@
               <option value="month" selected>This Month</option>
               <option value="quarter">This Quarter</option>
             </select>
-          </div>
+      </div>
         </div>
         <div id="listingsChart" class="chart-canvas"></div>
       </div>
@@ -658,27 +776,9 @@
       </div>
       
       <div class="data-card">
-        <div class="data-icon">🔄</div>
-        <div class="data-value" id="returnRate">-</div>
-        <div class="data-label">Return Rate</div>
-      </div>
-      
-      <div class="data-card">
-        <div class="data-icon">👥</div>
-        <div class="data-value" id="userRetention">-</div>
-        <div class="data-label">User Retention</div>
-      </div>
-      
-      <div class="data-card">
         <div class="data-icon">⭐</div>
         <div class="data-value" id="avgRating">-</div>
         <div class="data-label">Avg. Rating</div>
-      </div>
-      
-      <div class="data-card">
-        <div class="data-icon">📱</div>
-        <div class="data-value" id="mobileUsage">-</div>
-        <div class="data-label">Mobile Usage</div>
       </div>
     </div>
   </main>
@@ -690,6 +790,44 @@
       if (!isAuthenticated) {
         window.location.href = '/admin/login.html';
       }
+    }
+    
+    // Theme Management
+    function initTheme() {
+      const savedTheme = localStorage.getItem('snaplist_theme');
+      const themeToggle = document.getElementById('themeToggle');
+      
+      if (savedTheme === 'dark') {
+        document.documentElement.classList.add('dark-theme');
+        document.documentElement.classList.remove('light-theme');
+        themeToggle.checked = true;
+      } else if (savedTheme === 'light') {
+        document.documentElement.classList.add('light-theme');
+        document.documentElement.classList.remove('dark-theme');
+        themeToggle.checked = false;
+      } else {
+        // Default to system preference
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        themeToggle.checked = prefersDark;
+        if (prefersDark) {
+          document.documentElement.classList.add('dark-theme');
+        } else {
+          document.documentElement.classList.add('light-theme');
+        }
+      }
+      
+      // Set up the theme toggle event listener
+      themeToggle.addEventListener('change', function() {
+        if (this.checked) {
+          document.documentElement.classList.add('dark-theme');
+          document.documentElement.classList.remove('light-theme');
+          localStorage.setItem('snaplist_theme', 'dark');
+        } else {
+          document.documentElement.classList.add('light-theme');
+          document.documentElement.classList.remove('dark-theme');
+          localStorage.setItem('snaplist_theme', 'light');
+        }
+      });
     }
     
     // Logout Function
@@ -1647,15 +1785,13 @@
       try {
         // Fetch listings data to calculate KPIs
         const listingsResponse = await fetch('/api/admin/listings?limit=1000');
-        const usersResponse = await fetch('/api/admin/users?limit=1000');
         const salesResponse = await fetch('/api/admin/listings?status=sold&limit=1000');
         
-        if (!listingsResponse.ok || !usersResponse.ok || !salesResponse.ok) {
+        if (!listingsResponse.ok || !salesResponse.ok) {
           throw new Error('Failed to fetch necessary data for KPIs');
         }
         
         const listingsData = await listingsResponse.json();
-        const usersData = await usersResponse.json();
         const salesData = await salesResponse.json();
         
         // Calculate average time to sell
@@ -1704,54 +1840,6 @@
           document.getElementById('avgOrderValue').textContent = 'N/A';
         }
         
-        // Calculate return rate (estimated)
-        try {
-          // If we don't have a dedicated returns API, estimate from sales data
-          // Assume that items with a certain status or flag are returns
-          let returnCount = 0;
-          if (salesData.success && salesData.listings && salesData.listings.length > 0) {
-            returnCount = salesData.listings.filter(listing => 
-              listing.status === 'returned' || listing.is_returned === true
-            ).length;
-            
-            const returnRate = soldCount > 0 ? (returnCount / soldCount) * 100 : 0;
-            document.getElementById('returnRate').textContent = `${returnRate.toFixed(1)}%`;
-          } else {
-            document.getElementById('returnRate').textContent = '0%';
-          }
-        } catch (error) {
-          console.error('Error calculating return rate:', error);
-          document.getElementById('returnRate').textContent = '0%';
-        }
-        
-        // Calculate user retention (estimated)
-        try {
-          // Calculate retention based on user login data if available
-          if (usersData.success && usersData.users && usersData.users.length > 0) {
-            const totalUsers = usersData.users.length;
-            const thirtyDaysAgo = new Date();
-            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-            
-            // Count users who logged in within the last 30 days
-            const activeUsers = usersData.users.filter(user => {
-              if (user.last_login) {
-                const lastLogin = new Date(user.last_login);
-                return lastLogin >= thirtyDaysAgo;
-              }
-              return false;
-            }).length;
-            
-            // Calculate retention rate
-            const retentionRate = totalUsers > 0 ? (activeUsers / totalUsers) * 100 : 0;
-            document.getElementById('userRetention').textContent = `${retentionRate.toFixed(1)}%`;
-          } else {
-            document.getElementById('userRetention').textContent = 'N/A';
-          }
-        } catch (error) {
-          console.error('Error calculating user retention:', error);
-          document.getElementById('userRetention').textContent = 'N/A';
-        }
-        
         // Calculate average rating (estimated from listing data if available)
         try {
           let totalRating = 0;
@@ -1779,24 +1867,12 @@
           document.getElementById('avgRating').textContent = 'N/A';
         }
         
-        // Calculate mobile usage (estimate with a reasonable number)
-        try {
-          // If we don't have analytics data, use a reasonable estimate
-          document.getElementById('mobileUsage').textContent = '65.0%';
-        } catch (error) {
-          console.error('Error setting mobile usage:', error);
-          document.getElementById('mobileUsage').textContent = 'N/A';
-        }
-        
       } catch (error) {
         console.error('Error calculating KPI data:', error);
         // Set all to N/A if calculation fails
         document.getElementById('avgListingTime').textContent = 'N/A';
         document.getElementById('avgOrderValue').textContent = 'N/A';
-        document.getElementById('returnRate').textContent = 'N/A';
-        document.getElementById('userRetention').textContent = 'N/A';
         document.getElementById('avgRating').textContent = 'N/A';
-        document.getElementById('mobileUsage').textContent = 'N/A';
       }
     }
     
@@ -1804,6 +1880,7 @@
     document.addEventListener('DOMContentLoaded', function() {
       checkAuth();
       displayCurrentDate();
+      initTheme();
       
       // Setup revenue date range picker
       $('#revenueDateRange').daterangepicker({
