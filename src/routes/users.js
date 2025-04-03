@@ -196,6 +196,48 @@ router.post('/:id/chat/support', async (req, res) => {
       return res.status(404).json({ success: false, message: userResult.message });
     }
     
+    // If conversation_id is provided, check if the conversation is already escalated
+    if (conversation_id) {
+      const { data: existingConversation, error: checkError } = await supabase
+        .from('support_chats')
+        .select('status')
+        .eq('conversation_id', conversation_id)
+        .eq('status', 'escalated')
+        .limit(1);
+      
+      if (!checkError && existingConversation && existingConversation.length > 0) {
+        // This conversation is already escalated, no AI response should be generated
+        // Store the message but don't generate AI response
+        const insertData = {
+          user_id: id,
+          message,
+          ai_response: "This conversation has been escalated to our support team. A customer service representative will respond to you soon.",
+          status: 'escalated',
+          conversation_id: conversation_id
+        };
+        
+        // Store the support chat in the database
+        const { data: chatData, error: chatError } = await supabase
+          .from('support_chats')
+          .insert(insertData)
+          .select();
+          
+        if (chatError) {
+          console.error('Error storing escalated support chat:', chatError);
+          return res.status(500).json({ success: false, message: 'Failed to store chat message' });
+        }
+        
+        // Return the escalation message to the user
+        return res.status(200).json({
+          success: true,
+          response: insertData.ai_response,
+          chatId: chatData[0].id,
+          conversationId: chatData[0].conversation_id,
+          escalated: true
+        });
+      }
+    }
+    
     // Process the message with OpenAI
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -346,7 +388,8 @@ Keep responses concise, helpful, and focused on helping the user understand how 
       success: true,
       response: aiResponse,
       chatId: chatData && chatData.length > 0 ? chatData[0].id : null,
-      conversationId: chatData && chatData.length > 0 ? chatData[0].conversation_id : insertData.conversation_id
+      conversationId: chatData && chatData.length > 0 ? chatData[0].conversation_id : insertData.conversation_id,
+      escalated: needsEscalation
     });
   } catch (error) {
     console.error(`Error in POST /users/${req.params.id}/chat/support:`, error);

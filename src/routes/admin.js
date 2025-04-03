@@ -1276,7 +1276,7 @@ router.put('/support-chats/:id/status', async (req, res) => {
     }
     
     // Validate status
-    const validStatuses = ['pending', 'responded', 'resolved'];
+    const validStatuses = ['pending', 'responded', 'resolved', 'escalated'];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({
         success: false,
