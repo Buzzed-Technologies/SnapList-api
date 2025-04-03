@@ -675,79 +675,80 @@
   </main>
   
   <script>
-    // Authentication Check
-    function checkAuth() {
-      const isAuthenticated = localStorage.getItem('snaplist_admin_auth');
-      if (!isAuthenticated) {
-        window.location.href = '/admin/login.html';
-      }
-    }
-    
-    // Logout Function
-    document.getElementById('logoutButton').addEventListener('click', function() {
-      localStorage.removeItem('snaplist_admin_auth');
-      window.location.href = '/admin/login.html';
-    });
-    
-    // Display Current Date
-    function displayCurrentDate() {
-      const date = new Date();
-      const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-      document.getElementById('currentDate').textContent = date.toLocaleDateString('en-US', options);
-    }
-    
-    // Use global variables for chat state
+    // Global variables
     let currentChatId = null;
     let currentConversationId = null;
-    let chatRefreshInterval = null;
-    let currentFilter = 'all';
     let currentSearch = '';
+    let currentFilter = 'all';
     let chatData = [];
+    let chatRefreshInterval = null;
+    let mainListRefreshInterval = null;
     
-    // Format timestamp to relative time
-    function formatRelativeTime(timestamp) {
+    // Format a detailed time with relative display if recent
+    function formatDetailedTime(timeStr) {
+      const date = new Date(timeStr);
       const now = new Date();
-      const date = new Date(timestamp);
-      const diffInSeconds = Math.floor((now - date) / 1000);
+      const diff = now - date;
       
-      if (diffInSeconds < 60) {
-        return 'just now';
-      } else if (diffInSeconds < 3600) {
-        const mins = Math.floor(diffInSeconds / 60);
-        return `${mins} min${mins > 1 ? 's' : ''} ago`;
-      } else if (diffInSeconds < 86400) {
-        const hours = Math.floor(diffInSeconds / 3600);
-        return `${hours} hour${hours > 1 ? 's' : ''} ago`;
-      } else if (diffInSeconds < 604800) {
-        const days = Math.floor(diffInSeconds / 86400);
-        return `${days} day${days > 1 ? 's' : ''} ago`;
-      } else {
-        return date.toLocaleDateString();
+      // Less than 1 hour ago
+      if (diff < 60 * 60 * 1000) {
+        const minutes = Math.floor(diff / (60 * 1000));
+        return minutes <= 0 ? 'just now' : `${minutes} min ago`;
       }
-    }
-    
-    // Format timestamp to detailed time
-    function formatDetailedTime(timestamp) {
-      const date = new Date(timestamp);
-      return `${date.toLocaleDateString()} at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-    }
-    
-    // Get user initials for avatar
-    function getUserInitials(name) {
-      if (!name) return '?';
       
-      const words = name.split(' ');
-      if (words.length === 1) {
-        return words[0].charAt(0).toUpperCase();
-      } else {
-        return (words[0].charAt(0) + words[words.length - 1].charAt(0)).toUpperCase();
+      // Today
+      if (date.toDateString() === now.toDateString()) {
+        return `Today at ${date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`;
       }
+      
+      // Yesterday
+      const yesterday = new Date(now);
+      yesterday.setDate(yesterday.getDate() - 1);
+      if (date.toDateString() === yesterday.toDateString()) {
+        return `Yesterday at ${date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`;
+      }
+      
+      // Older
+      return date.toLocaleString();
     }
     
-    // Truncate text for preview
-    function truncateText(text, maxLength = 50) {
-      if (!text) return '';
-      return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+    // Display current date
+    function displayCurrentDate() {
+      const currentDate = new Date();
+      const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+      document.getElementById('currentDate').textContent = currentDate.toLocaleDateString(undefined, options);
+    }
+    
+    // Check authentication
+    function checkAuth() {
+      fetch('/api/admin/auth/check')
+        .then(response => response.json())
+        .then(data => {
+          if (!data.authenticated) {
+            window.location.href = '/admin/login.html';
+          }
+        })
+        .catch(error => {
+          console.error('Error checking authentication:', error);
+          window.location.href = '/admin/login.html';
+        });
+    }
+    
+    // Log out
+    function logout() {
+      fetch('/api/admin/auth/logout', { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            window.location.href = '/admin/login.html';
+          } else {
+            alert('Logout failed: ' + data.message);
+          }
+        })
+        .catch(error => {
+          console.error('Logout error:', error);
+          alert('Logout failed: ' + error.message);
+        });
     }
     
     // Fetch Support Chats
@@ -1122,14 +1123,119 @@
       });
     });
     
+    // Start automatic refresh for the main chat list
+    function startMainListRefresh() {
+      // Clear any existing interval
+      stopMainListRefresh();
+      
+      // Refresh chat list every 30 seconds
+      mainListRefreshInterval = setInterval(() => {
+        // Only refresh if we're not in the middle of editing or viewing details
+        if (!document.querySelector('#chatPanel').classList.contains('d-none')) {
+          // If a chat is being viewed, just fetch in the background without disrupting the UI
+          fetchChatListSilently();
+        } else {
+          // If no chat is being viewed, refresh the entire list
+          fetchSupportChats();
+        }
+      }, 30000); // Every 30 seconds
+    }
+    
+    // Stop the main list refresh
+    function stopMainListRefresh() {
+      if (mainListRefreshInterval) {
+        clearInterval(mainListRefreshInterval);
+        mainListRefreshInterval = null;
+      }
+    }
+    
+    // Fetch chat list in the background without updating UI
+    async function fetchChatListSilently() {
+      try {
+        let url = '/api/admin/support-chats';
+        
+        // Add search and filter
+        const params = new URLSearchParams();
+        if (currentSearch) {
+          params.append('search', currentSearch);
+        }
+        if (currentFilter !== 'all') {
+          params.append('status', currentFilter);
+        }
+        
+        if (params.toString()) {
+          url += `?${params.toString()}`;
+        }
+        
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error('Failed to fetch support chats');
+        }
+        
+        const data = await response.json();
+        if (data.success) {
+          // Update chat count
+          document.getElementById('chatCount').textContent = `${data.chats.length} chats`;
+          
+          // Check if we have new chats (more chats than before or different newest chat)
+          const hasNewChats = data.chats.length > chatData.length || 
+                             (data.chats.length > 0 && chatData.length > 0 && 
+                              data.chats[0].id !== chatData[0].id);
+          
+          // Store chat data globally
+          chatData = data.chats;
+          
+          // If we have new chats, update the unread indicator on the chat list
+          if (hasNewChats) {
+            // Add a visual indicator that there are new chats
+            const chatListHeader = document.querySelector('.chat-list-header');
+            if (chatListHeader) {
+              if (!document.getElementById('newChatsIndicator')) {
+                const indicator = document.createElement('span');
+                indicator.id = 'newChatsIndicator';
+                indicator.className = 'badge bg-primary ms-2 new-chats-badge';
+                indicator.textContent = 'New';
+                chatListHeader.appendChild(indicator);
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error silently fetching support chats:', error);
+      }
+    }
+    
     // Initialize
     document.addEventListener('DOMContentLoaded', function() {
       checkAuth();
       displayCurrentDate();
       fetchSupportChats();
+      startMainListRefresh();
     });
 
-    // Add these functions after the existing JavaScript code
+    // Handle page visibility changes
+    document.addEventListener('visibilitychange', function() {
+      if (document.visibilityState === 'visible') {
+        // Resume refreshing for both main list and current chat
+        startMainListRefresh();
+        if (currentConversationId) {
+          startChatRefresh();
+        }
+        
+        // Immediately fetch new chats
+        fetchSupportChats();
+      } else {
+        // Pause all refreshing when tab is not visible
+        stopMainListRefresh();
+        stopChatRefresh();
+      }
+    });
+
+    // Clean up when navigating away
+    window.addEventListener('beforeunload', function() {
+      stopMainListRefresh();
+      stopChatRefresh();
+    });
 
     // Start the auto-refresh when a chat is being viewed
     function startChatRefresh() {
@@ -1231,20 +1337,20 @@
                     // Update button text
                     toggleButton.textContent = data.chat.hide_ai_response ? 'Show AI Response' : 'Hide AI Response';
                 } else {
-                    showAlert('error', 'Failed to toggle AI response');
+                    alert('Failed to toggle AI response');
                     toggleButton.textContent = originalText;
                 }
                 toggleButton.disabled = false;
             })
             .catch(error => {
                 console.error('Error toggling AI response:', error);
-                showAlert('error', 'Failed to toggle AI response');
+                alert('Failed to toggle AI response: ' + error.message);
                 toggleButton.textContent = originalText;
                 toggleButton.disabled = false;
             });
     }
 
-    // Modify the existing fetchChat function
+    // Modify the existing fetchChat function to also handle conversation_id
     function fetchChat(id) {
         // Reset variables for new chat
         currentChatId = id;
@@ -1262,6 +1368,12 @@
         
         // Show chat panel
         document.querySelector('#chatPanel').classList.remove('d-none');
+        
+        // Remove new chats indicator if it exists
+        const indicator = document.getElementById('newChatsIndicator');
+        if (indicator) {
+            indicator.remove();
+        }
         
         fetch(`/api/admin/support-chats/${id}`)
             .then(response => response.json())
@@ -1487,24 +1599,6 @@
         
         chatContainer.innerHTML = content;
     }
-
-    // Handle page visibility changes
-    document.addEventListener('visibilitychange', function() {
-        if (document.visibilityState === 'visible') {
-            // Resume refreshing if viewing a conversation
-            if (currentConversationId) {
-                startChatRefresh();
-            }
-        } else {
-            // Pause refreshing when tab is not visible
-            stopChatRefresh();
-        }
-    });
-
-    // Clean up when navigating away
-    window.addEventListener('beforeunload', function() {
-        stopChatRefresh();
-    });
 
     // Helper function to get badge color based on status
     function getStatusBadgeColor(status) {

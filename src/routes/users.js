@@ -1,18 +1,11 @@
 const express = require('express');
 const userUtils = require('../utils/userUtils');
 const notificationService = require('../services/notificationService');
-const { Configuration, OpenAIApi } = require("openai");
+const openai = require('../config/openai');
 const { supabase } = require('../config/supabase');
-const { v4: uuidv4 } = require('uuid');
-const { requireAuth } = require('../middleware/auth');
+const crypto = require('crypto');
 
 const router = express.Router();
-
-// Configure OpenAI
-const configuration = new Configuration({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-const openai = new OpenAIApi(configuration);
 
 /**
  * @route POST /api/users
@@ -50,40 +43,23 @@ router.post('/', async (req, res) => {
  * @desc Get a user by ID
  * @access Public
  */
-router.get('/:id', requireAuth, async (req, res) => {
-  const { id } = req.params;
-  
-  // Ensure the requesting user is authorized to access this user
-  if (req.user.id !== id && req.user.role !== 'admin') {
-    return res.status(403).json({ 
-      success: false, 
-      message: 'Unauthorized access to user data' 
-    });
-  }
-  
+router.get('/:id', async (req, res) => {
   try {
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (error) throw error;
+    const { id } = req.params;
     
-    if (!data) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'User not found' 
-      });
+    const result = await userUtils.getUserById(id);
+    
+    if (!result.success) {
+      return res.status(404).json({ success: false, message: result.message });
     }
-
-    return res.status(200).json({ success: true, user: data });
-  } catch (error) {
-    console.error('Error fetching user:', error);
-    return res.status(500).json({ 
-      success: false, 
-      message: 'Server error while fetching user' 
+    
+    res.status(200).json({
+      success: true,
+      user: result.user
     });
+  } catch (error) {
+    console.error(`Error in GET /users/${req.params.id}:`, error);
+    res.status(500).json({ success: false, message: `Failed to fetch user: ${error.message}` });
   }
 });
 
@@ -203,400 +179,273 @@ router.post('/:id/notifications/read', async (req, res) => {
  * @desc Process a support chat message and get AI response
  * @access Public
  */
-router.post('/:id/chat/support', requireAuth, async (req, res) => {
-  const { id } = req.params;
-  const { message, conversation_id } = req.body;
-  
-  // Validate input
-  if (!message) {
-    return res.status(400).json({
-      success: false,
-      message: 'Message is required'
-    });
-  }
-  
-  // Ensure the requesting user is authorized
-  if (req.user.id !== id) {
-    return res.status(403).json({ 
-      success: false, 
-      message: 'Unauthorized access' 
-    });
-  }
-  
+router.post('/:id/chat/support', async (req, res) => {
   try {
-    // Get user data to personalize response
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('name')
-      .eq('id', id)
-      .single();
-      
-    if (userError) throw userError;
+    const { id } = req.params;
+    const { message, conversation_id } = req.body;
     
-    if (!userData) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
+    if (!message) {
+      return res.status(400).json({ success: false, message: 'Message is required' });
     }
     
-    // System prompt with app functionality information
-    const systemPrompt = `You are an AI assistant for the SnapList app, a marketplace for sneakers. 
+    // Get the user to provide context
+    const userResult = await userUtils.getUserById(id);
     
-    App functionalities:
-    - Users can list sneakers for sale with photos, prices, and descriptions
-    - Users can browse and buy sneakers from other users
-    - Payments are processed through the app with Zelle integration
-    - Sellers receive payments after buyers confirm receipt of items
+    if (!userResult.success) {
+      return res.status(404).json({ success: false, message: userResult.message });
+    }
     
-    Terms of Service summary:
-    - Users must be 18+ to sell on the platform
-    - No counterfeit or replica items allowed
-    - Sellers must ship items within 3 days of purchase
-    - Payment processing fee of 5% applies to all sales
-    
-    Privacy Policy summary:
-    - We collect user information including name, email, and payment details
-    - User data is never sold to third parties
-    - Location data is only used to show nearby listings
-    
-    Common FAQs:
-    - Shipping: Sellers are responsible for shipping costs unless otherwise stated
-    - Returns: The app does not handle returns directly; buyers and sellers must communicate
-    - Account issues: Users should contact support for account-related problems
-    - Payment issues: Payment disputes should be reported within 7 days of transaction
-    
-    Be helpful, friendly, and concise. If you don't know an answer, suggest contacting the support team directly. Address the user by their name when appropriate.`;
-    
-    // Get AI response
-    const completion = await openai.createChatCompletion({
-      model: "gpt-3.5-turbo",
+    // Process the message with OpenAI
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
       messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: message }
+        {
+          role: "system",
+          content: `You are a helpful support assistant for SnapList, an app that helps people list items for sale on marketplaces like eBay and Facebook Marketplace.
+          
+The app allows users to:
+- Take photos of items they want to sell
+- Get AI-generated listings with titles, descriptions and pricing
+- Manage their listings and track profits
+- Get notifications when items sell
+- Process payouts to their accounts
+
+Here are important details from our Terms of Service:
+1. Users must be at least 13 years old to create an account
+2. SnapList charges a 2.5% commission on successful transactions
+3. Payouts are typically processed within 48 hours after a transaction is complete
+4. Payments are made to Zelle, Cash App, PayPal or Venmo linked phone numbers
+5. Users must provide accurate information about themselves and their listings
+6. Users can only list items they own or have authorization to sell
+7. Prohibited items include weapons, illegal substances, and counterfeit goods
+
+Here are important details from our Privacy Policy:
+1. We collect personal information (name, phone number, date of birth), transaction data, device information, usage data, and photos/media
+2. We use this information to manage accounts, process listings/transactions, facilitate payments, improve services, and provide support
+3. We may share data with service providers, business partners, or when required by law
+4. We implement security measures to protect personal information
+5. Users have rights to access, correct, delete, or restrict processing of their data
+6. The app is intended for users who are at least 13 years old
+
+Frequently Asked Questions:
+1. How do I delete my account? 
+   - Delete the app and your account will be inactivated. If you want all data deleted, contact buzedapp@gmail.com.
+
+2. How long does it take for payment to process? 
+   - Payments typically process within around 48 hours.
+
+3. What if my items don't get sold? 
+   - SnapList will keep lowering the price until items are sold or until they reach the minimum price. Items will never be delisted unless you press the delete listing button in the app.
+
+4. How does pricing work?
+   - Our AI automatically suggests an optimal price for your item based on market data. We'll gradually reduce the price if needed until it sells or reaches your minimum price.
+
+5. How do I update my payment information?
+   - Go to your profile page and tap the payment method to update your Zelle, Cash App, PayPal, or Venmo information.
+
+6. Is there a limit to how many items I can list?
+   - There is no limit to the number of items you can list with SnapList.
+
+7. How do I know when my item sells?
+   - You'll receive a notification when your item sells, and you can also check the status in your listings tab.
+
+8. What commission does SnapList take?
+   - SnapList charges a 2.5% commission on successful sales.
+
+9. Can I edit my listing after posting?
+   - Yes, you can edit your listing details by selecting the listing and tapping the edit button.
+
+10. What types of items sell best on SnapList?
+    - Clothing, electronics, home goods, and collectibles typically sell well on our platform.
+
+If you cannot answer a user's question or they have a specific issue that requires human attention, provide the support email: buzedapp@gmail.com.
+
+Keep responses concise, helpful, and focused on helping the user understand how to use the app.`
+        },
+        {
+          role: "user",
+          content: message
+        }
       ],
       max_tokens: 500
     });
     
-    const aiResponse = completion.data.choices[0].message.content;
+    const aiResponse = response.choices[0].message.content;
     
-    // Store in database based on whether this is a new conversation or part of an existing one
-    let responseObj;
+    // Check if we need to create a new conversation or add to existing one
+    let insertData = {
+      user_id: id,
+      message,
+      ai_response: aiResponse,
+      status: 'pending' // Admins will need to review and potentially respond
+    };
     
+    // If conversation_id is provided, add to that conversation
     if (conversation_id) {
-      // Add to existing conversation
-      responseObj = await addToExistingConversation(id, conversation_id, message, aiResponse);
+      // Verify the conversation belongs to this user
+      const { data: existingConversation, error: verifyError } = await supabase
+        .from('support_chats')
+        .select('id')
+        .eq('conversation_id', conversation_id)
+        .eq('user_id', id)
+        .limit(1);
+      
+      if (verifyError || !existingConversation || existingConversation.length === 0) {
+        // Invalid conversation ID, create new one
+        const { data: newUUID } = await supabase.rpc('gen_random_uuid');
+        insertData.conversation_id = newUUID || crypto.randomUUID();
+      } else {
+        // Valid conversation ID, use it
+        insertData.conversation_id = conversation_id;
+      }
     } else {
-      // Create a new conversation
-      responseObj = await createNewConversation(id, message, aiResponse);
+      // Generate a new UUID for conversation_id - use node's crypto if RPC fails
+      const { data: newUUID, error: uuidError } = await supabase.rpc('gen_random_uuid');
+      insertData.conversation_id = newUUID || crypto.randomUUID();
     }
     
-    return res.status(200).json({
+    // Store the support chat in the database
+    const { data: chatData, error: chatError } = await supabase
+      .from('support_chats')
+      .insert(insertData)
+      .select();
+      
+    if (chatError) {
+      console.error('Error storing support chat:', chatError);
+      // Continue anyway to return the AI response to the user
+    }
+    
+    res.status(200).json({
       success: true,
       response: aiResponse,
-      conversationId: responseObj.conversationId,
-      messageId: responseObj.messageId
+      chatId: chatData && chatData.length > 0 ? chatData[0].id : null,
+      conversationId: chatData && chatData.length > 0 ? chatData[0].conversation_id : insertData.conversation_id
     });
-    
   } catch (error) {
-    console.error('Support chat error:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Server error processing support request'
-    });
+    console.error(`Error in POST /users/${req.params.id}/chat/support:`, error);
+    res.status(500).json({ success: false, message: `Failed to process support chat: ${error.message}` });
   }
 });
-
-// Helper function to create a new conversation
-async function createNewConversation(userId, message, aiResponse) {
-  // Generate IDs
-  const conversationId = uuidv4();
-  const messageId = uuidv4();
-  
-  // Create message array with user message and AI response
-  const messages = [
-    {
-      id: messageId,
-      type: 'user',
-      content: message,
-      created_at: new Date().toISOString()
-    },
-    {
-      id: uuidv4(),
-      type: 'ai',
-      content: aiResponse,
-      created_at: new Date().toISOString()
-    }
-  ];
-  
-  // Create the conversation record
-  const { data, error } = await supabase
-    .from('support_conversations')
-    .insert({
-      id: conversationId,
-      user_id: userId,
-      title: message.substring(0, 50) + (message.length > 50 ? '...' : ''),
-      messages: messages,
-      status: 'pending',
-      last_message_at: new Date().toISOString()
-    })
-    .select()
-    .single();
-  
-  if (error) throw error;
-  
-  return {
-    conversationId,
-    messageId
-  };
-}
-
-// Helper function to add to an existing conversation
-async function addToExistingConversation(userId, conversationId, message, aiResponse) {
-  // First check if the conversation exists and belongs to this user
-  const { data: conversation, error: fetchError } = await supabase
-    .from('support_conversations')
-    .select('*')
-    .eq('id', conversationId)
-    .eq('user_id', userId)
-    .single();
-  
-  if (fetchError) throw fetchError;
-  
-  if (!conversation) {
-    throw new Error('Conversation not found or does not belong to this user');
-  }
-  
-  // Generate message IDs
-  const messageId = uuidv4();
-  
-  // Create new messages
-  const userMessage = {
-    id: messageId,
-    type: 'user',
-    content: message,
-    created_at: new Date().toISOString()
-  };
-  
-  const aiMessage = {
-    id: uuidv4(),
-    type: 'ai',
-    content: aiResponse,
-    created_at: new Date().toISOString()
-  };
-  
-  // Update the conversation
-  const { data, error } = await supabase
-    .from('support_conversations')
-    .update({
-      messages: [...conversation.messages, userMessage, aiMessage],
-      last_message: message.substring(0, 100) + (message.length > 100 ? '...' : ''),
-      last_message_at: new Date().toISOString(),
-      status: 'pending', // Reset to pending since there's a new message
-    })
-    .eq('id', conversationId)
-    .select()
-    .single();
-  
-  if (error) throw error;
-  
-  return {
-    conversationId,
-    messageId
-  };
-}
 
 /**
  * @route GET /api/users/:id/chat/support/history
- * @desc Get user's support chat history
+ * @desc Get user's support chat history grouped by conversations
  * @access Public
  */
-router.get('/:id/chat/support/history', requireAuth, async (req, res) => {
-  const { id } = req.params;
-  const limit = parseInt(req.query.limit) || 20;
-  
-  // Ensure the requesting user is authorized
-  if (req.user.id !== id) {
-    return res.status(403).json({ 
-      success: false, 
-      message: 'Unauthorized access' 
-    });
-  }
-  
+router.get('/:id/chat/support/history', async (req, res) => {
   try {
-    // Get conversations ordered by last message time
-    const { data, error } = await supabase
-      .from('support_conversations')
-      .select('*')
-      .eq('user_id', id)
-      .order('last_message_at', { ascending: false })
-      .limit(limit);
+    const { id } = req.params;
+    const { limit = 20 } = req.query;
     
-    if (error) throw error;
-    
-    // Format conversations for the client
-    const formattedConversations = data.map(conv => {
-      return {
-        id: conv.id,
-        title: conv.title,
-        last_message: getMessage(conv.messages),
-        last_message_at: conv.last_message_at,
-        status: conv.status,
-        unread: isUnread(conv),
-        has_admin_response: hasAdminResponse(conv.messages)
-      };
-    });
-    
-    return res.status(200).json({
-      success: true,
-      conversations: formattedConversations
-    });
-  } catch (error) {
-    console.error('Error fetching support chat history:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Server error fetching support chat history'
-    });
-  }
-});
-
-// Get conversation messages
-router.get('/:id/chat/support/conversations/:conversationId', requireAuth, async (req, res) => {
-  const { id, conversationId } = req.params;
-  
-  // Ensure the requesting user is authorized
-  if (req.user.id !== id) {
-    return res.status(403).json({ 
-      success: false, 
-      message: 'Unauthorized access' 
-    });
-  }
-  
-  try {
-    // Fetch the conversation
-    const { data, error } = await supabase
-      .from('support_conversations')
-      .select('*')
-      .eq('id', conversationId)
-      .eq('user_id', id)
-      .single();
-    
-    if (error) throw error;
-    
-    if (!data) {
-      return res.status(404).json({
-        success: false,
-        message: 'Conversation not found'
+    // Get the latest message from each conversation
+    const { data: conversations, error: conversationsError } = await supabase
+      .rpc('get_latest_conversations', { 
+        user_id_param: id,
+        limit_param: parseInt(limit)
       });
-    }
     
-    // Format messages for client
-    const messages = formatMessagesForClient(data.messages, data.hide_ai_responses);
-    
-    return res.status(200).json({
-      success: true,
-      conversation: {
-        id: data.id,
-        title: data.title,
-        status: data.status,
-        messages: messages,
-        hide_ai_responses: data.hide_ai_responses
+    if (conversationsError) {
+      console.error(`Error fetching support chat conversations for user ${id}:`, conversationsError);
+      
+      // Fallback to older implementation if the function doesn't exist
+      const { data: chats, error } = await supabase
+        .from('support_chats')
+        .select('*')
+        .eq('user_id', id)
+        .order('created_at', { ascending: false })
+        .limit(parseInt(limit));
+      
+      if (error) {
+        return res.status(500).json({
+          success: false,
+          message: `Failed to fetch support chat history: ${error.message}`
+        });
       }
-    });
-  } catch (error) {
-    console.error('Error fetching conversation:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Server error fetching conversation'
-    });
-  }
-});
-
-// Mark conversation as read
-router.post('/:id/chat/support/conversations/:conversationId/read', requireAuth, async (req, res) => {
-  const { id, conversationId } = req.params;
-  
-  // Ensure the requesting user is authorized
-  if (req.user.id !== id) {
-    return res.status(403).json({ 
-      success: false, 
-      message: 'Unauthorized access' 
-    });
-  }
-  
-  try {
-    // Update the read_at timestamp
-    const now = new Date().toISOString();
-    const { data, error } = await supabase
-      .from('support_conversations')
-      .update({ read_at: now })
-      .eq('id', conversationId)
-      .eq('user_id', id)
-      .select()
-      .single();
-    
-    if (error) throw error;
-    
-    if (!data) {
-      return res.status(404).json({
-        success: false,
-        message: 'Conversation not found'
+      
+      // Transform the chats data to include unread flag and ensure updated_at is not null
+      const formattedChats = chats.map(chat => ({
+        ...chat,
+        updated_at: chat.updated_at || chat.created_at,
+        unread: chat.admin_response && !chat.read_at
+      }));
+      
+      return res.status(200).json({
+        success: true,
+        chats: formattedChats
       });
     }
     
-    return res.status(200).json({
+    // Transform the conversations data
+    const formattedConversations = conversations.map(chat => ({
+      ...chat,
+      updated_at: chat.updated_at || chat.created_at,
+      unread: chat.admin_response && !chat.read_at
+    }));
+    
+    res.status(200).json({
       success: true,
-      message: 'Conversation marked as read'
+      chats: formattedConversations
     });
   } catch (error) {
-    console.error('Error marking conversation as read:', error);
-    return res.status(500).json({
+    console.error(`Error in GET /users/${req.params.id}/chat/support/history:`, error);
+    res.status(500).json({
       success: false,
-      message: 'Server error marking conversation as read'
+      message: `Failed to fetch support chat history: ${error.message}`
     });
   }
 });
 
-// Helper functions for support chats
-function getMessage(messages) {
-  if (!messages || messages.length === 0) {
-    return "";
+/**
+ * @route GET /api/users/:id/chat/support/conversations/:conversationId
+ * @desc Get all messages in a specific conversation
+ * @access Public
+ */
+router.get('/:id/chat/support/conversations/:conversationId', async (req, res) => {
+  try {
+    const { id, conversationId } = req.params;
+    
+    // Get all messages in this conversation
+    const { data: messages, error } = await supabase
+      .from('support_chats')
+      .select('*')
+      .eq('user_id', id)
+      .eq('conversation_id', conversationId)
+      .order('created_at', { ascending: true });
+    
+    if (error) {
+      console.error(`Error fetching conversation ${conversationId} for user ${id}:`, error);
+      return res.status(500).json({
+        success: false,
+        message: `Failed to fetch conversation: ${error.message}`
+      });
+    }
+    
+    // Check if there are any unread messages and mark them as read
+    const unreadMessages = messages.filter(msg => msg.admin_response && !msg.read_at);
+    if (unreadMessages.length > 0) {
+      const unreadIds = unreadMessages.map(msg => msg.id);
+      
+      const { error: markReadError } = await supabase
+        .from('support_chats')
+        .update({ read_at: new Date().toISOString() })
+        .in('id', unreadIds);
+      
+      if (markReadError) {
+        console.error(`Error marking messages as read in conversation ${conversationId}:`, markReadError);
+      }
+    }
+    
+    res.status(200).json({
+      success: true,
+      messages: messages
+    });
+  } catch (error) {
+    console.error(`Error in GET /users/${req.params.id}/chat/support/conversations/${req.params.conversationId}:`, error);
+    res.status(500).json({
+      success: false,
+      message: `Failed to fetch conversation: ${error.message}`
+    });
   }
-  // Get the most recent non-system message
-  const userMessages = messages.filter(m => m.type === 'user');
-  if (userMessages.length > 0) {
-    const lastMessage = userMessages[userMessages.length - 1];
-    return lastMessage.content.substring(0, 100) + (lastMessage.content.length > 100 ? '...' : '');
-  }
-  return "";
-}
-
-function isUnread(conversation) {
-  if (!conversation.read_at) return true;
-  
-  // Check if there are admin messages after the read_at time
-  const readTime = new Date(conversation.read_at).getTime();
-  
-  // Find any admin messages that were created after read_at
-  const unreadAdminMessages = conversation.messages.filter(msg => {
-    return msg.type === 'admin' && new Date(msg.created_at).getTime() > readTime;
-  });
-  
-  return unreadAdminMessages.length > 0;
-}
-
-function hasAdminResponse(messages) {
-  if (!messages) return false;
-  return messages.some(msg => msg.type === 'admin');
-}
-
-function formatMessagesForClient(messages, hideAi) {
-  if (!messages) return [];
-  
-  // Filter out AI messages if they should be hidden
-  return messages.filter(msg => {
-    return !(hideAi && msg.type === 'ai');
-  });
-}
+});
 
 module.exports = router; 
