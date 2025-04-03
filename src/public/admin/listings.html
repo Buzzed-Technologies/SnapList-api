@@ -668,10 +668,10 @@
           ? `https://lsrdviupiuoztnccwdxk.supabase.co/storage/v1/object/public/snaplist-images/uploads/${listing.image_url}`
           : (listing.images && listing.images.length > 0 
               ? `https://lsrdviupiuoztnccwdxk.supabase.co/storage/v1/object/public/snaplist-images/uploads/${listing.images[0]}`
-              : '/static/img/placeholder.png');
+              : '/static/img/no-image.png');
         
         card.innerHTML = `
-          <img src="${imageUrl}" alt="${listing.title}" class="listing-image" onerror="this.src='/static/img/placeholder.png'">
+          <img src="${imageUrl}" alt="${listing.title}" class="listing-image" onerror="this.src='/static/img/no-image.png'">
           <div class="listing-content">
             <h3 class="listing-title">${listing.title}</h3>
             <div class="listing-price">${price}</div>
@@ -824,14 +824,14 @@
                 <div class="image-preview">
                   ${listing.image_url ? 
                     `<div class="image-item">
-                      <img src="https://lsrdviupiuoztnccwdxk.supabase.co/storage/v1/object/public/snaplist-images/uploads/${listing.image_url}" alt="Listing image">
+                      <img src="https://lsrdviupiuoztnccwdxk.supabase.co/storage/v1/object/public/snaplist-images/uploads/${listing.image_url}" alt="Listing image" onerror="this.src='/static/img/no-image.png'">
                     </div>` : 
                     (listing.images && listing.images.length > 0 ? 
                       listing.images.map(img => 
                         `<div class="image-item">
-                          <img src="https://lsrdviupiuoztnccwdxk.supabase.co/storage/v1/object/public/snaplist-images/uploads/${img}" alt="Listing image">
+                          <img src="https://lsrdviupiuoztnccwdxk.supabase.co/storage/v1/object/public/snaplist-images/uploads/${img}" alt="Listing image" onerror="this.src='/static/img/no-image.png'">
                         </div>`
-                      ).join('') : 'No images available')
+                      ).join('') : '<span>No images available</span>')
                   }
                 </div>
               </div>

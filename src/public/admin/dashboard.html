@@ -696,6 +696,14 @@
               processPayoutHandler(this.getAttribute('data-id'));
             });
           });
+          
+          // Add event listeners for View buttons
+          document.querySelectorAll('#pendingPayouts .action-view').forEach(button => {
+            button.addEventListener('click', function() {
+              const payoutId = this.getAttribute('data-id');
+              window.location.href = `/admin/payouts.html?id=${payoutId}`;
+            });
+          });
         } else {
           document.getElementById('pendingPayouts').innerHTML = `
             <tr>

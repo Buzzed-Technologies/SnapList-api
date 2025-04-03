@@ -1099,10 +1099,10 @@
           // Get the image URL or use a placeholder
           const imageUrl = item.image_url 
             ? `https://lsrdviupiuoztnccwdxk.supabase.co/storage/v1/object/public/snaplist-images/uploads/${item.image_url}` 
-            : '/static/img/placeholder.png';
+            : '/static/img/no-image.png';
           
           itemEl.innerHTML = `
-            <img src="${imageUrl}" alt="${item.title}" class="item-thumbnail" onerror="this.src='/static/img/placeholder.png'">
+            <img src="${imageUrl}" alt="${item.title}" class="item-thumbnail" onerror="this.src='/static/img/no-image.png'">
             <div class="item-details">
               <div class="item-title">${item.title}</div>
               <div class="item-price">$${item.price.toFixed(2)}</div>
@@ -1207,8 +1207,24 @@
     document.addEventListener('DOMContentLoaded', function() {
       checkAuth();
       displayCurrentDate();
+      
+      // Check for payout ID in URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const payoutId = urlParams.get('id');
+      
+      if (payoutId) {
+        // If we have a payout ID in the URL, view that payout
+        viewPayout(payoutId);
+      }
+      
       fetchPayoutStats();
       fetchPayouts();
+      
+      // Process All button
+      document.querySelector('.section-action').addEventListener('click', function(e) {
+        e.preventDefault();
+        processAllPendingPayouts();
+      });
     });
   </script>
 </body>
