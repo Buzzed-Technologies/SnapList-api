@@ -15,6 +15,10 @@
   <script type="text/javascript" src="https://cdn.jsdelivr.net/jquery/latest/jquery.min.js"></script>
   <script type="text/javascript" src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
   <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+  <!-- ApexCharts - More advanced charting library -->
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+  <!-- For advanced gradients and animations -->
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-gradient"></script>
   <style>
     :root {
       --primary-color: #FF6A00;
@@ -379,10 +383,17 @@
     
     .chart-container {
       background-color: var(--card-background);
-      border-radius: 12px;
-      box-shadow: 0 4px 12px var(--shadow-color);
-      padding: 20px;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px var(--shadow-color);
+      padding: 24px;
       position: relative;
+      overflow: hidden;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .chart-container:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 15px 30px var(--shadow-color);
     }
     
     .chart-container.large {
@@ -393,12 +404,25 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 16px;
+      margin-bottom: 20px;
     }
     
     .chart-title {
-      font-size: 16px;
-      font-weight: 600;
+      font-size: 18px;
+      font-weight: 700;
+      position: relative;
+      padding-left: 15px;
+    }
+    
+    .chart-title::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 100%;
+      width: 5px;
+      background: var(--primary-color);
+      border-radius: 10px;
     }
     
     .chart-controls {
@@ -408,42 +432,18 @@
     }
     
     .time-filter {
-      padding: 6px 12px;
-      border-radius: 6px;
+      padding: 8px 16px;
+      border-radius: 8px;
       border: 1px solid var(--border-color);
       background-color: var(--card-background);
-      font-size: 12px;
+      font-size: 13px;
+      font-weight: 500;
       cursor: pointer;
+      transition: all 0.2s;
     }
     
-    .chart-legend {
-      display: flex;
-      gap: 12px;
-      margin-top: 12px;
-      flex-wrap: wrap;
-      justify-content: center;
-    }
-    
-    .legend-item {
-      display: flex;
-      align-items: center;
-      font-size: 12px;
-      cursor: pointer;
-    }
-    
-    .legend-color {
-      width: 12px;
-      height: 12px;
-      border-radius: 2px;
-      margin-right: 6px;
-    }
-    
-    .chart-tooltip {
-      background-color: var(--card-background);
-      box-shadow: 0 4px 12px var(--shadow-color);
-      border-radius: 6px;
-      padding: 10px;
-      font-size: 12px;
+    .time-filter:hover {
+      border-color: var(--primary-color);
     }
     
     .chart-canvas {
@@ -576,7 +576,7 @@
           <input type="text" id="revenueDateRange" class="time-filter" value="Last 30 Days" readonly>
         </div>
       </div>
-      <canvas id="revenueChart" class="chart-canvas"></canvas>
+      <div id="revenueChart" class="chart-canvas"></div>
     </div>
     
     <!-- Charts Grid (2-column layout) -->
@@ -594,53 +594,52 @@
             </select>
           </div>
         </div>
-        <canvas id="categoryChart" class="chart-canvas"></canvas>
+        <div id="categoryChart" class="chart-canvas"></div>
       </div>
       
-      <!-- Regional Sales Chart -->
+      <!-- Active Listings Chart -->
       <div class="chart-container">
         <div class="chart-header">
-          <div class="chart-title">Regional Performance</div>
+          <div class="chart-title">Active Listings</div>
           <div class="chart-controls">
-            <select id="regionTimeFilter" class="time-filter">
+            <select id="listingsTimeFilter" class="time-filter">
               <option value="week">This Week</option>
               <option value="month" selected>This Month</option>
               <option value="quarter">This Quarter</option>
-              <option value="year">This Year</option>
             </select>
           </div>
         </div>
-        <canvas id="regionChart" class="chart-canvas"></canvas>
+        <div id="listingsChart" class="chart-canvas"></div>
       </div>
       
       <!-- User Growth Chart -->
       <div class="chart-container">
         <div class="chart-header">
-          <div class="chart-title">User Growth</div>
+          <div class="chart-title">User Activity</div>
           <div class="chart-controls">
-            <select id="userGrowthPeriod" class="time-filter">
-              <option value="3months">Last 3 Months</option>
-              <option value="6months" selected>Last 6 Months</option>
-              <option value="year">Last Year</option>
+            <select id="userActivityPeriod" class="time-filter">
+              <option value="week">Last Week</option>
+              <option value="month" selected>Last Month</option>
+              <option value="quarter">Last Quarter</option>
             </select>
           </div>
         </div>
-        <canvas id="userGrowthChart" class="chart-canvas"></canvas>
+        <div id="userActivityChart" class="chart-canvas"></div>
       </div>
       
-      <!-- Conversion Funnel Chart -->
+      <!-- Top Selling Items -->
       <div class="chart-container">
         <div class="chart-header">
-          <div class="chart-title">Conversion Funnel</div>
+          <div class="chart-title">Top Selling Items</div>
           <div class="chart-controls">
-            <select id="conversionPeriod" class="time-filter">
+            <select id="topSellingPeriod" class="time-filter">
               <option value="week">This Week</option>
               <option value="month" selected>This Month</option>
-              <option value="quarter">This Quarter</option>
+              <option value="allTime">All Time</option>
             </select>
           </div>
         </div>
-        <canvas id="conversionChart" class="chart-canvas"></canvas>
+        <div id="topSellingChart" class="chart-canvas"></div>
       </div>
     </div>
     
@@ -764,312 +763,552 @@
       }
     }
     
-    // Initialize Chart.js Charts
+    // Initialize Charts with ApexCharts for more advanced visualizations
     function initializeCharts() {
-      // Revenue Trend Chart (Line Chart)
-      const revenueCtx = document.getElementById('revenueChart').getContext('2d');
-      const revenueChart = new Chart(revenueCtx, {
-        type: 'line',
-        data: {
-          labels: [], // Will be populated by API data
-          datasets: [
+      // Revenue Trend Chart (Area Chart with ApexCharts)
+      fetchRevenueData('30days').then(data => {
+        const revenueOptions = {
+          series: [
             {
-              label: 'Revenue',
-              data: [], // Will be populated by API data
-              borderColor: '#FF6A00',
-              backgroundColor: 'rgba(255, 106, 0, 0.1)',
-              borderWidth: 2,
-              fill: true,
-              tension: 0.4
+              name: 'Revenue',
+              data: data.revenue
             },
             {
-              label: 'Profit',
-              data: [], // Will be populated by API data
-              borderColor: '#34C759',
-              backgroundColor: 'rgba(52, 199, 89, 0.1)',
-              borderWidth: 2,
-              fill: true,
-              tension: 0.4
+              name: 'Profit',
+              data: data.profit
             }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            tooltip: {
-              mode: 'index',
-              intersect: false,
-              backgroundColor: 'rgba(0, 0, 0, 0.7)',
-              padding: 10,
-              titleColor: '#FFFFFF',
-              bodyColor: '#FFFFFF',
-              borderColor: 'rgba(255, 255, 255, 0.2)',
-              borderWidth: 1,
-              displayColors: true,
-              callbacks: {
-                label: function(context) {
-                  let label = context.dataset.label || '';
-                  if (label) {
-                    label += ': ';
-                  }
-                  if (context.parsed.y !== null) {
-                    label += new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(context.parsed.y);
-                  }
-                  return label;
-                }
-              }
+          ],
+          chart: {
+            height: 350,
+            type: 'area',
+            fontFamily: 'Inter, sans-serif',
+            toolbar: {
+              show: false
             },
-            legend: {
-              display: true,
-              position: 'top',
-              align: 'end',
-              labels: {
-                boxWidth: 12,
-                usePointStyle: true,
-                pointStyle: 'circle'
+            animations: {
+              enabled: true,
+              easing: 'easeinout',
+              speed: 800
+            },
+            dropShadow: {
+              enabled: true,
+              top: 3,
+              left: 2,
+              blur: 4,
+              opacity: 0.1
+            }
+          },
+          dataLabels: {
+            enabled: false
+          },
+          stroke: {
+            curve: 'smooth',
+            width: 3
+          },
+          colors: ['#FF6A00', '#34C759'],
+          fill: {
+            type: 'gradient',
+            gradient: {
+              shadeIntensity: 1,
+              opacityFrom: 0.7,
+              opacityTo: 0.2,
+              stops: [0, 90, 100]
+            }
+          },
+          grid: {
+            borderColor: 'rgba(0,0,0,0.1)',
+            strokeDashArray: 3,
+            xaxis: {
+              lines: {
+                show: false
               }
             }
           },
-          scales: {
-            x: {
-              grid: {
-                display: false
+          markers: {
+            size: 4,
+            strokeWidth: 0,
+            hover: {
+              size: 7
+            }
+          },
+          xaxis: {
+            categories: data.labels,
+            tooltip: {
+              enabled: false
+            }
+          },
+          yaxis: {
+            labels: {
+              formatter: function(val) {
+                return '$' + val.toLocaleString();
               }
+            }
+          },
+          tooltip: {
+            theme: 'dark',
+            x: {
+              format: 'dd MMM yyyy'
             },
             y: {
-              grid: {
-                borderDash: [5, 5],
-                drawBorder: false
+              formatter: function(val) {
+                return '$' + val.toLocaleString();
+              }
+            }
+          },
+          legend: {
+            position: 'top',
+            horizontalAlign: 'right'
+          }
+        };
+
+        const revenueChart = new ApexCharts(document.getElementById('revenueChart'), revenueOptions);
+        revenueChart.render();
+        
+        // Setup revenue date range picker events
+        $('#revenueDateRange').on('apply.daterangepicker', function(ev, picker) {
+          const start = picker.startDate.format('YYYY-MM-DD');
+          const end = picker.endDate.format('YYYY-MM-DD');
+          fetchRevenueData(`custom:${start}:${end}`).then(newData => {
+            revenueChart.updateOptions({
+              xaxis: {
+                categories: newData.labels
+              }
+            });
+            revenueChart.updateSeries([
+              {
+                name: 'Revenue',
+                data: newData.revenue
               },
-              ticks: {
-                callback: function(value) {
-                  return '$' + value.toLocaleString();
-                }
+              {
+                name: 'Profit',
+                data: newData.profit
               }
-            }
-          },
-          interaction: {
-            mode: 'nearest',
-            axis: 'x',
-            intersect: false
-          }
-        }
+            ]);
+          });
+        });
       });
       
-      // Sales by Category Chart (Pie Chart)
-      const categoryCtx = document.getElementById('categoryChart').getContext('2d');
-      const categoryChart = new Chart(categoryCtx, {
-        type: 'doughnut',
-        data: {
-          labels: ['Electronics', 'Clothing', 'Home Goods', 'Collectibles', 'Sports', 'Other'],
-          datasets: [{
-            data: [35, 25, 15, 10, 8, 7],
-            backgroundColor: [
-              '#FF6A00', // Primary Orange
-              '#34C759', // Green
-              '#007AFF', // Blue
-              '#FF9500', // Orange
-              '#5856D6', // Purple
-              '#FF3B30'  // Red
-            ],
-            borderWidth: 0,
-            hoverOffset: 10
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          cutout: '70%',
-          plugins: {
-            legend: {
-              position: 'bottom',
-              labels: {
-                padding: 15,
-                usePointStyle: true,
-                pointStyle: 'circle'
-              }
-            },
-            tooltip: {
-              callbacks: {
-                label: function(context) {
-                  let label = context.label || '';
-                  let value = context.parsed || 0;
-                  let total = context.dataset.data.reduce((acc, data) => acc + data, 0);
-                  let percentage = ((value * 100) / total).toFixed(1) + '%';
-                  return `${label}: ${percentage} ($${value.toLocaleString()})`;
-                }
-              }
-            }
-          }
-        }
-      });
-      
-      // Regional Performance Chart (Bar Chart)
-      const regionCtx = document.getElementById('regionChart').getContext('2d');
-      const regionChart = new Chart(regionCtx, {
-        type: 'bar',
-        data: {
-          labels: ['West', 'Northeast', 'Midwest', 'South', 'International'],
-          datasets: [{
-            label: 'Sales Volume',
-            data: [4200, 3800, 2900, 3500, 1800],
-            backgroundColor: '#FF6A00',
-            borderRadius: 6
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              display: false
-            },
-            tooltip: {
-              callbacks: {
-                label: function(context) {
-                  let label = context.dataset.label || '';
-                  if (label) {
-                    label += ': ';
-                  }
-                  if (context.parsed.y !== null) {
-                    label += '$' + context.parsed.y.toLocaleString();
-                  }
-                  return label;
-                }
-              }
-            }
-          },
-          scales: {
-            x: {
-              grid: {
-                display: false
-              }
-            },
-            y: {
-              beginAtZero: true,
-              grid: {
-                borderDash: [5, 5],
-                drawBorder: false
+      // Sales by Category Chart (Donut with ApexCharts)
+      fetchCategoryData('month').then(data => {
+        const categoryOptions = {
+          series: data.values,
+          chart: {
+            type: 'donut',
+            height: 350,
+            fontFamily: 'Inter, sans-serif',
+            animations: {
+              enabled: true,
+              easing: 'easeinout',
+              speed: 500,
+              animateGradually: {
+                enabled: true,
+                delay: 150
               },
-              ticks: {
-                callback: function(value) {
-                  return '$' + value.toLocaleString();
-                }
-              }
-            }
-          }
-        }
-      });
-      
-      // User Growth Chart (Line Chart)
-      const userGrowthCtx = document.getElementById('userGrowthChart').getContext('2d');
-      const userGrowthChart = new Chart(userGrowthCtx, {
-        type: 'line',
-        data: {
-          labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-          datasets: [{
-            label: 'New Users',
-            data: [120, 145, 170, 210, 240, 280],
-            borderColor: '#007AFF',
-            backgroundColor: 'rgba(0, 122, 255, 0.1)',
-            borderWidth: 2,
-            fill: true,
-            tension: 0.4
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              display: false
-            }
-          },
-          scales: {
-            x: {
-              grid: {
-                display: false
-              }
-            },
-            y: {
-              beginAtZero: true,
-              grid: {
-                borderDash: [5, 5]
-              }
-            }
-          }
-        }
-      });
-      
-      // Conversion Funnel Chart (Bar Chart)
-      const conversionCtx = document.getElementById('conversionChart').getContext('2d');
-      const conversionChart = new Chart(conversionCtx, {
-        type: 'bar',
-        data: {
-          labels: ['Visitors', 'Sign-ups', 'Listings Created', 'Sales'],
-          datasets: [{
-            axis: 'y',
-            data: [10000, 3200, 1800, 760],
-            backgroundColor: [
-              'rgba(0, 122, 255, 0.8)',
-              'rgba(52, 199, 89, 0.8)',
-              'rgba(255, 149, 0, 0.8)',
-              'rgba(255, 106, 0, 0.8)'
-            ],
-            borderRadius: 6
-          }]
-        },
-        options: {
-          indexAxis: 'y',
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              display: false
-            },
-            tooltip: {
-              callbacks: {
-                label: function(context) {
-                  let value = context.parsed.x;
-                  let total = 10000; // Total visitors
-                  let percentage = ((value / total) * 100).toFixed(1) + '%';
-                  return `Count: ${value.toLocaleString()} (${percentage})`;
-                }
+              dynamicAnimation: {
+                enabled: true,
+                speed: 350
               }
             }
           },
-          scales: {
-            x: {
-              beginAtZero: true,
-              grid: {
-                borderDash: [5, 5]
-              },
-              ticks: {
-                callback: function(value) {
-                  if (value >= 1000) {
-                    return value / 1000 + 'k';
+          colors: ['#FF6A00', '#34C759', '#007AFF', '#FF9500', '#5856D6', '#FF3B30'],
+          labels: data.labels,
+          dataLabels: {
+            enabled: false
+          },
+          legend: {
+            position: 'bottom',
+            offsetY: 0
+          },
+          plotOptions: {
+            pie: {
+              donut: {
+                size: '65%',
+                labels: {
+                  show: true,
+                  total: {
+                    show: true,
+                    showAlways: false,
+                    label: 'Total Sales',
+                    fontSize: '16px',
+                    fontWeight: 600,
+                    color: '#373d3f',
+                    formatter: function(w) {
+                      const total = w.globals.seriesTotals.reduce((a, b) => a + b, 0);
+                      return '$' + total.toLocaleString();
+                    }
+                  },
+                  value: {
+                    show: true,
+                    fontSize: '22px',
+                    fontWeight: 700,
+                    formatter: function(val) {
+                      return '$' + val.toLocaleString();
+                    }
                   }
-                  return value;
                 }
               }
-            },
+            }
+          },
+          responsive: [{
+            breakpoint: 480,
+            options: {
+              chart: {
+                height: 300
+              },
+              legend: {
+                position: 'bottom'
+              }
+            }
+          }],
+          tooltip: {
+            enabled: true,
             y: {
-              grid: {
-                display: false
+              formatter: function(val) {
+                return '$' + val.toLocaleString();
               }
             }
           }
-        }
+        };
+
+        const categoryChart = new ApexCharts(document.getElementById('categoryChart'), categoryOptions);
+        categoryChart.render();
+        
+        // Add event listener for category filter
+        document.getElementById('categoryTimeFilter').addEventListener('change', function() {
+          fetchCategoryData(this.value).then(newData => {
+            categoryChart.updateOptions({
+              labels: newData.labels
+            });
+            categoryChart.updateSeries(newData.values);
+          });
+        });
       });
       
-      return {
-        revenueChart,
-        categoryChart,
-        regionChart,
-        userGrowthChart,
-        conversionChart
-      };
+      // Active Listings Chart (Bar Chart with ApexCharts)
+      fetchListingsData('month').then(data => {
+        if (!data || !data.labels || !data.values || data.values.length === 0) {
+          document.getElementById('listingsChart').innerHTML = '<div class="no-data-message">No listings data available</div>';
+          return;
+        }
+        
+        const listingsOptions = {
+          series: [{
+            name: 'Active Listings',
+            data: data.values
+          }],
+          chart: {
+            type: 'bar',
+            height: 350,
+            fontFamily: 'Inter, sans-serif',
+            toolbar: {
+              show: false
+            },
+            animations: {
+              enabled: true,
+              easing: 'easeinout',
+              speed: 800,
+              animateGradually: {
+                enabled: true,
+                delay: 150
+              },
+              dynamicAnimation: {
+                enabled: true,
+                speed: 350
+              }
+            }
+          },
+          plotOptions: {
+            bar: {
+              borderRadius: 8,
+              columnWidth: '60%',
+              distributed: true,
+              dataLabels: {
+                position: 'top'
+              }
+            }
+          },
+          colors: data.labels.map((_, i) => {
+            const colors = ['#FF6A00', '#34C759', '#007AFF', '#FF9500', '#5856D6', '#FF3B30'];
+            return colors[i % colors.length];
+          }),
+          dataLabels: {
+            enabled: false
+          },
+          legend: {
+            show: false
+          },
+          grid: {
+            borderColor: 'rgba(0,0,0,0.1)',
+            strokeDashArray: 3
+          },
+          xaxis: {
+            categories: data.labels,
+            labels: {
+              style: {
+                fontSize: '12px'
+              }
+            }
+          },
+          yaxis: {
+            title: {
+              text: 'Number of Listings'
+            }
+          },
+          tooltip: {
+            theme: 'dark',
+            y: {
+              formatter: function(val) {
+                return val.toLocaleString() + ' listings';
+              }
+            }
+          }
+        };
+
+        const listingsChart = new ApexCharts(document.getElementById('listingsChart'), listingsOptions);
+        listingsChart.render();
+        
+        // Add event listener for listings filter
+        document.getElementById('listingsTimeFilter').addEventListener('change', function() {
+          fetchListingsData(this.value).then(newData => {
+            if (!newData || !newData.labels || !newData.values || newData.values.length === 0) {
+              document.getElementById('listingsChart').innerHTML = '<div class="no-data-message">No listings data available</div>';
+              return;
+            }
+            
+            listingsChart.updateOptions({
+              xaxis: {
+                categories: newData.labels
+              },
+              colors: newData.labels.map((_, i) => {
+                const colors = ['#FF6A00', '#34C759', '#007AFF', '#FF9500', '#5856D6', '#FF3B30'];
+                return colors[i % colors.length];
+              })
+            });
+            listingsChart.updateSeries([{
+              name: 'Active Listings',
+              data: newData.values
+            }]);
+          });
+        });
+      });
+      
+      // User Activity Chart (Line Chart with ApexCharts)
+      fetchUserActivityData('month').then(data => {
+        if (!data || !data.labels || !data.series.length === 0) {
+          document.getElementById('userActivityChart').innerHTML = '<div class="no-data-message">No user activity data available</div>';
+          return;
+        }
+        
+        const userActivityOptions = {
+          series: data.series,
+          chart: {
+            height: 350,
+            type: 'line',
+            fontFamily: 'Inter, sans-serif',
+            dropShadow: {
+              enabled: true,
+              color: '#000',
+              top: 18,
+              left: 7,
+              blur: 10,
+              opacity: 0.2
+            },
+            toolbar: {
+              show: false
+            },
+            animations: {
+              enabled: true,
+              easing: 'easeinout',
+              speed: 800
+            }
+          },
+          colors: ['#FF6A00', '#007AFF'],
+          dataLabels: {
+            enabled: false
+          },
+          stroke: {
+            width: 3,
+            curve: 'smooth'
+          },
+          grid: {
+            borderColor: 'rgba(0,0,0,0.1)',
+            row: {
+              colors: ['transparent', 'transparent'],
+              opacity: 0.5
+            }
+          },
+          markers: {
+            size: 5,
+            hover: {
+              size: 8
+            }
+          },
+          xaxis: {
+            categories: data.labels
+          },
+          yaxis: {
+            title: {
+              text: 'User Count'
+            }
+          },
+          legend: {
+            position: 'top',
+            horizontalAlign: 'right'
+          },
+          tooltip: {
+            theme: 'dark',
+            y: {
+              formatter: function(val) {
+                return val.toLocaleString() + ' users';
+              }
+            }
+          }
+        };
+
+        const userActivityChart = new ApexCharts(document.getElementById('userActivityChart'), userActivityOptions);
+        userActivityChart.render();
+        
+        // Add event listener for user activity filter
+        document.getElementById('userActivityPeriod').addEventListener('change', function() {
+          fetchUserActivityData(this.value).then(newData => {
+            if (!newData || !newData.labels || !newData.series.length === 0) {
+              document.getElementById('userActivityChart').innerHTML = '<div class="no-data-message">No user activity data available</div>';
+              return;
+            }
+            
+            userActivityChart.updateOptions({
+              xaxis: {
+                categories: newData.labels
+              }
+            });
+            userActivityChart.updateSeries(newData.series);
+          });
+        });
+      });
+      
+      // Top Selling Items Chart (Horizontal Bar with ApexCharts)
+      fetchTopSellingData('month').then(data => {
+        if (!data || !data.items || !data.values || data.values.length === 0) {
+          document.getElementById('topSellingChart').innerHTML = '<div class="no-data-message">No top selling data available</div>';
+          return;
+        }
+        
+        // Sort the data by values
+        const sortedData = [...data.items.map((item, i) => ({ item, value: data.values[i] }))];
+        sortedData.sort((a, b) => b.value - a.value);
+        const topItems = sortedData.slice(0, 7); // Get top 7 items
+        
+        const topSellingOptions = {
+          series: [{
+            name: 'Sales',
+            data: topItems.map(d => d.value)
+          }],
+          chart: {
+            type: 'bar',
+            height: 350,
+            fontFamily: 'Inter, sans-serif',
+            toolbar: {
+              show: false
+            },
+            animations: {
+              enabled: true,
+              easing: 'easeinout',
+              speed: 800
+            }
+          },
+          plotOptions: {
+            bar: {
+              borderRadius: 8,
+              horizontal: true,
+              barHeight: '70%',
+              distributed: true,
+              dataLabels: {
+                position: 'bottom'
+              }
+            }
+          },
+          colors: ['#FF6A00', '#34C759', '#007AFF', '#FF9500', '#5856D6', '#FF3B30', '#FF2D55'],
+          dataLabels: {
+            enabled: true,
+            textAnchor: 'start',
+            style: {
+              colors: ['#fff']
+            },
+            formatter: function(val, opt) {
+              return '$' + val.toLocaleString();
+            },
+            offsetX: 0
+          },
+          stroke: {
+            width: 1,
+            colors: ['#fff']
+          },
+          grid: {
+            borderColor: 'rgba(0,0,0,0.1)',
+            strokeDashArray: 3
+          },
+          xaxis: {
+            categories: topItems.map(d => d.item.length > 20 ? d.item.substring(0, 20) + '...' : d.item),
+            labels: {
+              style: {
+                fontSize: '12px'
+              }
+            }
+          },
+          yaxis: {
+            labels: {
+              show: false
+            }
+          },
+          tooltip: {
+            theme: 'dark',
+            x: {
+              show: true
+            },
+            y: {
+              title: {
+                formatter: function() {
+                  return 'Sales:';
+                }
+              },
+              formatter: function(val) {
+                return '$' + val.toLocaleString();
+              }
+            }
+          },
+          legend: {
+            show: false
+          }
+        };
+
+        const topSellingChart = new ApexCharts(document.getElementById('topSellingChart'), topSellingOptions);
+        topSellingChart.render();
+        
+        // Add event listener for top selling filter
+        document.getElementById('topSellingPeriod').addEventListener('change', function() {
+          fetchTopSellingData(this.value).then(newData => {
+            if (!newData || !newData.items || !newData.values || newData.values.length === 0) {
+              document.getElementById('topSellingChart').innerHTML = '<div class="no-data-message">No top selling data available</div>';
+              return;
+            }
+            
+            // Sort the data by values for the new timeframe
+            const sortedNewData = [...newData.items.map((item, i) => ({ item, value: newData.values[i] }))];
+            sortedNewData.sort((a, b) => b.value - a.value);
+            const newTopItems = sortedNewData.slice(0, 7); // Get top 7 items
+            
+            topSellingChart.updateOptions({
+              xaxis: {
+                categories: newTopItems.map(d => d.item.length > 20 ? d.item.substring(0, 20) + '...' : d.item)
+              }
+            });
+            topSellingChart.updateSeries([{
+              name: 'Sales',
+              data: newTopItems.map(d => d.value)
+            }]);
+          });
+        });
+      });
     }
     
     // Fetch Revenue Trend Data
@@ -1092,7 +1331,7 @@
         }
       } catch (error) {
         console.error('Error fetching revenue data:', error);
-        // Return minimal fallback data instead of random generation
+        // Return minimal fallback data
         const labels = [];
         const today = new Date();
         for (let i = 29; i >= 0; i--) {
@@ -1127,6 +1366,36 @@
         }
       } catch (error) {
         console.error('Error fetching category data:', error);
+        
+        // Attempt to calculate from listings data if analytics endpoint fails
+        try {
+          const listingsResponse = await fetch('/api/admin/listings?limit=1000');
+          if (!listingsResponse.ok) {
+            throw new Error('Failed to fetch listings for category calculation');
+          }
+          
+          const listingsData = await listingsResponse.json();
+          if (listingsData.success && listingsData.listings && listingsData.listings.length > 0) {
+            // Group by category and count
+            const categories = {};
+            listingsData.listings.forEach(listing => {
+              const category = listing.category || 'Uncategorized';
+              if (!categories[category]) {
+                categories[category] = 0;
+              }
+              categories[category] += parseFloat(listing.price) || 0;
+            });
+            
+            // Convert to arrays for chart
+            const labels = Object.keys(categories);
+            const values = Object.values(categories);
+            
+            return { labels, values };
+          }
+        } catch (listingsError) {
+          console.error('Error calculating from listings:', listingsError);
+        }
+        
         // Return minimal fallback data
         return {
           labels: ['No Data Available'],
@@ -1135,295 +1404,204 @@
       }
     }
     
-    // Fetch Regional Data
-    async function fetchRegionalData(timeRange = 'month') {
+    // Fetch Active Listings Data
+    async function fetchListingsData(timeRange = 'month') {
       try {
-        const response = await fetch(`/api/admin/analytics/regions?timeRange=${timeRange}`);
-        if (!response.ok) {
-          throw new Error('Failed to fetch regional data');
+        const response = await fetch(`/api/admin/analytics/listings?timeRange=${timeRange}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            return {
+              labels: data.categories || data.labels,
+              values: data.counts || data.values
+            };
+          }
         }
         
-        const data = await response.json();
-        if (data.success) {
-          return {
-            labels: data.regions,
-            values: data.values
-          };
-        } else {
-          throw new Error(data.message || 'Failed to get regional data');
-        }
-      } catch (error) {
-        console.error('Error fetching regional data:', error);
-        // Return fallback data
-        return {
-          labels: ['West', 'Northeast', 'Midwest', 'South', 'International'],
-          values: [4200, 3800, 2900, 3500, 1800]
-        };
-      }
-    }
-    
-    // Fetch User Growth Data
-    async function fetchUserGrowthData(timeRange = '6months') {
-      try {
-        const response = await fetch(`/api/admin/analytics/user-growth?timeRange=${timeRange}`);
-        if (!response.ok) {
-          throw new Error('Failed to fetch user growth data');
-        }
-        
-        const data = await response.json();
-        if (data.success) {
-          return {
-            labels: data.months,
-            values: data.users
-          };
-        } else {
-          throw new Error(data.message || 'Failed to get user growth data');
-        }
-      } catch (error) {
-        console.error('Error fetching user growth data:', error);
-        // Return fallback data
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-        return {
-          labels: months,
-          values: [120, 145, 170, 210, 240, 280]
-        };
-      }
-    }
-    
-    // Fetch Conversion Data
-    async function fetchConversionData(timeRange = 'month') {
-      try {
-        const response = await fetch(`/api/admin/analytics/conversion?timeRange=${timeRange}`);
-        if (!response.ok) {
-          throw new Error('Failed to fetch conversion data');
-        }
-        
-        const data = await response.json();
-        if (data.success) {
-          return {
-            labels: data.stages,
-            values: data.counts
-          };
-        } else {
-          throw new Error(data.message || 'Failed to get conversion data');
-        }
-      } catch (error) {
-        console.error('Error fetching conversion data:', error);
-        // Return fallback data
-        return {
-          labels: ['Visitors', 'Sign-ups', 'Listings Created', 'Sales'],
-          values: [10000, 3200, 1800, 760]
-        };
-      }
-    }
-    
-    // Fetch KPI Data - Calculate real values from actual data
-    async function fetchKPIData() {
-      try {
-        // Fetch listings data to calculate KPIs
-        const listingsResponse = await fetch('/api/admin/listings?limit=1000');
-        const usersResponse = await fetch('/api/admin/users?limit=1000');
-        const salesResponse = await fetch('/api/admin/listings?status=sold&limit=1000');
-        
-        if (!listingsResponse.ok || !usersResponse.ok || !salesResponse.ok) {
-          throw new Error('Failed to fetch necessary data for KPIs');
+        // If the analytics endpoint fails, try to calculate from listings data
+        const listingsResponse = await fetch('/api/admin/listings?status=active&limit=1000');
+        if (!listingsResponse.ok) {
+          throw new Error('Failed to fetch listings data');
         }
         
         const listingsData = await listingsResponse.json();
+        if (listingsData.success && listingsData.listings && listingsData.listings.length > 0) {
+          // Group by category and count
+          const categories = {};
+          listingsData.listings.forEach(listing => {
+            const category = listing.category || 'Uncategorized';
+            if (!categories[category]) {
+              categories[category] = 0;
+            }
+            categories[category]++;
+          });
+          
+          // Convert to arrays for chart
+          const labels = Object.keys(categories);
+          const values = Object.values(categories);
+          
+          return { labels, values };
+        }
+        
+        throw new Error('No valid listings data found');
+      } catch (error) {
+        console.error('Error fetching listings data:', error);
+        return null;
+      }
+    }
+    
+    // Fetch User Activity Data
+    async function fetchUserActivityData(timeRange = 'month') {
+      try {
+        const response = await fetch(`/api/admin/analytics/user-activity?timeRange=${timeRange}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            // Expected format: { labels: [...dates], newUsers: [...counts], activeUsers: [...counts] }
+            return {
+              labels: data.labels || data.dates,
+              series: [
+                {
+                  name: 'New Users',
+                  data: data.newUsers || []
+                },
+                {
+                  name: 'Active Users',
+                  data: data.activeUsers || []
+                }
+              ]
+            };
+          }
+        }
+        
+        // If analytics endpoint fails, try user signup history
+        const usersResponse = await fetch('/api/admin/users?limit=1000');
+        if (!usersResponse.ok) {
+          throw new Error('Failed to fetch users data');
+        }
+        
         const usersData = await usersResponse.json();
-        const salesData = await salesResponse.json();
-        
-        // Calculate average time to sell
-        let totalTimeToSell = 0;
-        let soldCount = 0;
-        
-        if (salesData.success && salesData.listings && salesData.listings.length > 0) {
-          salesData.listings.forEach(item => {
-            if (item.created_at && item.sold_at) {
-              const createdDate = new Date(item.created_at);
-              const soldDate = new Date(item.sold_at);
-              const daysToSell = (soldDate - createdDate) / (1000 * 60 * 60 * 24);
-              if (daysToSell >= 0) {
-                totalTimeToSell += daysToSell;
-                soldCount++;
+        if (usersData.success && usersData.users && usersData.users.length > 0) {
+          // Group users by signup date
+          const usersByDate = {};
+          const now = new Date();
+          const daysToFetch = timeRange === 'week' ? 7 : timeRange === 'month' ? 30 : 90;
+          
+          // Initialize all dates with 0
+          for (let i = daysToFetch - 1; i >= 0; i--) {
+            const date = new Date();
+            date.setDate(now.getDate() - i);
+            const dateString = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            usersByDate[dateString] = 0;
+          }
+          
+          // Count users by signup date
+          usersData.users.forEach(user => {
+            if (user.created_at) {
+              const signupDate = new Date(user.created_at);
+              // Only include if within the time range
+              const daysDiff = Math.floor((now - signupDate) / (1000 * 60 * 60 * 24));
+              if (daysDiff <= daysToFetch) {
+                const dateString = signupDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                if (usersByDate[dateString] !== undefined) {
+                  usersByDate[dateString]++;
+                }
               }
             }
           });
           
-          if (soldCount > 0) {
-            const avgTimeToSell = totalTimeToSell / soldCount;
-            document.getElementById('avgListingTime').textContent = `${avgTimeToSell.toFixed(1)} days`;
-          } else {
-            document.getElementById('avgListingTime').textContent = 'N/A';
-          }
-        } else {
-          document.getElementById('avgListingTime').textContent = 'N/A';
-        }
-        
-        // Calculate average order value
-        let totalSalesValue = 0;
-        if (salesData.success && salesData.listings && salesData.listings.length > 0) {
-          salesData.listings.forEach(item => {
-            if (item.price) {
-              totalSalesValue += parseFloat(item.price);
-            }
-          });
+          // Convert to arrays for chart - we only have signup data, not active users
+          const labels = Object.keys(usersByDate);
+          const newUsers = Object.values(usersByDate);
           
-          if (soldCount > 0) {
-            const avgOrderValue = totalSalesValue / soldCount;
-            document.getElementById('avgOrderValue').textContent = `$${avgOrderValue.toFixed(2)}`;
-          } else {
-            document.getElementById('avgOrderValue').textContent = 'N/A';
-          }
-        } else {
-          document.getElementById('avgOrderValue').textContent = 'N/A';
+          return {
+            labels,
+            series: [
+              {
+                name: 'New Users',
+                data: newUsers
+              }
+            ]
+          };
         }
         
-        // Attempt to fetch return rate from API or calculate
-        try {
-          const returnsResponse = await fetch('/api/admin/returns');
-          if (returnsResponse.ok) {
-            const returnsData = await returnsResponse.json();
-            if (returnsData.success && returnsData.returnRate !== undefined) {
-              document.getElementById('returnRate').textContent = `${returnsData.returnRate.toFixed(1)}%`;
-            } else if (returnsData.success && returnsData.returns && soldCount > 0) {
-              const returnRate = (returnsData.returns.length / soldCount) * 100;
-              document.getElementById('returnRate').textContent = `${returnRate.toFixed(1)}%`;
-            } else {
-              document.getElementById('returnRate').textContent = '0%';
-            }
-          } else {
-            document.getElementById('returnRate').textContent = '0%';
-          }
-        } catch (error) {
-          console.error('Error fetching returns data:', error);
-          document.getElementById('returnRate').textContent = '0%';
-        }
-        
-        // Calculate user retention
-        try {
-          const retentionResponse = await fetch('/api/admin/analytics/retention');
-          if (retentionResponse.ok) {
-            const retentionData = await retentionResponse.json();
-            if (retentionData.success && retentionData.retention !== undefined) {
-              document.getElementById('userRetention').textContent = `${retentionData.retention.toFixed(1)}%`;
-            } else {
-              document.getElementById('userRetention').textContent = 'N/A';
-            }
-          } else {
-            document.getElementById('userRetention').textContent = 'N/A';
-          }
-        } catch (error) {
-          console.error('Error fetching retention data:', error);
-          document.getElementById('userRetention').textContent = 'N/A';
-        }
-        
-        // Calculate average rating
-        try {
-          const ratingsResponse = await fetch('/api/admin/ratings');
-          if (ratingsResponse.ok) {
-            const ratingsData = await ratingsResponse.json();
-            if (ratingsData.success && ratingsData.ratings && ratingsData.ratings.length > 0) {
-              let totalRating = 0;
-              ratingsData.ratings.forEach(rating => {
-                totalRating += rating.value;
-              });
-              const avgRating = totalRating / ratingsData.ratings.length;
-              document.getElementById('avgRating').textContent = avgRating.toFixed(1);
-            } else {
-              document.getElementById('avgRating').textContent = 'N/A';
-            }
-          } else {
-            document.getElementById('avgRating').textContent = 'N/A';
-          }
-        } catch (error) {
-          console.error('Error fetching ratings data:', error);
-          document.getElementById('avgRating').textContent = 'N/A';
-        }
-        
-        // Calculate mobile usage
-        try {
-          const analyticsResponse = await fetch('/api/admin/analytics/platform-usage');
-          if (analyticsResponse.ok) {
-            const analyticsData = await analyticsResponse.json();
-            if (analyticsData.success && analyticsData.mobile !== undefined) {
-              document.getElementById('mobileUsage').textContent = `${analyticsData.mobile.toFixed(1)}%`;
-            } else {
-              document.getElementById('mobileUsage').textContent = 'N/A';
-            }
-          } else {
-            document.getElementById('mobileUsage').textContent = 'N/A';
-          }
-        } catch (error) {
-          console.error('Error fetching platform usage data:', error);
-          document.getElementById('mobileUsage').textContent = 'N/A';
-        }
-        
+        throw new Error('No valid user activity data found');
       } catch (error) {
-        console.error('Error calculating KPI data:', error);
-        // Set all to N/A if calculation fails
-        document.getElementById('avgListingTime').textContent = 'N/A';
-        document.getElementById('avgOrderValue').textContent = 'N/A';
-        document.getElementById('returnRate').textContent = 'N/A';
-        document.getElementById('userRetention').textContent = 'N/A';
-        document.getElementById('avgRating').textContent = 'N/A';
-        document.getElementById('mobileUsage').textContent = 'N/A';
+        console.error('Error fetching user activity data:', error);
+        return null;
       }
     }
     
-    // Update Revenue Chart
-    async function updateRevenueChart(chart, timeRange) {
-      const data = await fetchRevenueData(timeRange);
-      
-      chart.data.labels = data.labels;
-      chart.data.datasets[0].data = data.revenue;
-      chart.data.datasets[1].data = data.profit;
-      chart.update();
-    }
-    
-    // Update Category Chart
-    async function updateCategoryChart(chart, timeRange) {
-      const data = await fetchCategoryData(timeRange);
-      
-      chart.data.labels = data.labels;
-      chart.data.datasets[0].data = data.values;
-      chart.update();
-    }
-    
-    // Update Regional Chart
-    async function updateRegionalChart(chart, timeRange) {
-      const data = await fetchRegionalData(timeRange);
-      
-      chart.data.labels = data.labels;
-      chart.data.datasets[0].data = data.values;
-      chart.update();
-    }
-    
-    // Update User Growth Chart
-    async function updateUserGrowthChart(chart, timeRange) {
-      const data = await fetchUserGrowthData(timeRange);
-      
-      chart.data.labels = data.labels;
-      chart.data.datasets[0].data = data.values;
-      chart.update();
-    }
-    
-    // Update Conversion Chart
-    async function updateConversionChart(chart, timeRange) {
-      const data = await fetchConversionData(timeRange);
-      
-      chart.data.labels = data.labels;
-      chart.data.datasets[0].data = data.values;
-      chart.update();
+    // Fetch Top Selling Items Data
+    async function fetchTopSellingData(timeRange = 'month') {
+      try {
+        const response = await fetch(`/api/admin/analytics/top-selling?timeRange=${timeRange}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            return {
+              items: data.items || data.titles || data.names,
+              values: data.values || data.sales || data.counts
+            };
+          }
+        }
+        
+        // If analytics endpoint fails, calculate from sold listings
+        const salesResponse = await fetch('/api/admin/listings?status=sold&limit=1000');
+        if (!salesResponse.ok) {
+          throw new Error('Failed to fetch sales data');
+        }
+        
+        const salesData = await salesResponse.json();
+        if (salesData.success && salesData.listings && salesData.listings.length > 0) {
+          // Filter by time range if specified
+          let filteredSales = salesData.listings;
+          if (timeRange !== 'allTime') {
+            const now = new Date();
+            const cutoffDate = new Date();
+            if (timeRange === 'week') {
+              cutoffDate.setDate(now.getDate() - 7);
+            } else if (timeRange === 'month') {
+              cutoffDate.setMonth(now.getMonth() - 1);
+            } else if (timeRange === 'quarter') {
+              cutoffDate.setMonth(now.getMonth() - 3);
+            }
+            
+            filteredSales = filteredSales.filter(item => {
+              const soldDate = new Date(item.sold_at || item.updated_at);
+              return soldDate >= cutoffDate;
+            });
+          }
+          
+          // Group by title and sum sales
+          const salesByItem = {};
+          filteredSales.forEach(item => {
+            const title = item.title || 'Unnamed Item';
+            const price = parseFloat(item.price) || 0;
+            if (!salesByItem[title]) {
+              salesByItem[title] = 0;
+            }
+            salesByItem[title] += price;
+          });
+          
+          // Convert to arrays for chart
+          const items = Object.keys(salesByItem);
+          const values = Object.values(salesByItem);
+          
+          return { items, values };
+        }
+        
+        throw new Error('No valid top selling data found');
+      } catch (error) {
+        console.error('Error fetching top selling data:', error);
+        return null;
+      }
     }
     
     // Initialize Dashboard
     document.addEventListener('DOMContentLoaded', function() {
       checkAuth();
       displayCurrentDate();
-      
-      // Initialize charts first
-      const charts = initializeCharts();
       
       // Setup revenue date range picker
       $('#revenueDateRange').daterangepicker({
@@ -1432,60 +1610,18 @@
           'Last 30 Days': [moment().subtract(29, 'days'), moment()],
           'This Month': [moment().startOf('month'), moment().endOf('month')],
           'Last Month': [moment().subtract(1, 'month').startOf('month'), moment().subtract(1, 'month').endOf('month')],
-          'Last 3 Months': [moment().subtract(3, 'months'), moment()],
-          'Last 6 Months': [moment().subtract(6, 'months'), moment()],
-          'Year to Date': [moment().startOf('year'), moment()]
+          'Last 3 Months': [moment().subtract(3, 'months'), moment()]
         },
         startDate: moment().subtract(29, 'days'),
         endDate: moment(),
         opens: 'left',
         alwaysShowCalendars: true
-      }, function(start, end, label) {
-        // Get the timeframe value from the selected label
-        let timeframe = '30days';
-        
-        if (label === 'Last 7 Days') timeframe = '7days';
-        else if (label === 'Last 30 Days') timeframe = '30days';
-        else if (label === 'This Month') timeframe = 'thisMonth';
-        else if (label === 'Last Month') timeframe = 'lastMonth';
-        else if (label === 'Last 3 Months') timeframe = '3months';
-        else if (label === 'Last 6 Months') timeframe = '6months';
-        else if (label === 'Year to Date') timeframe = 'ytd';
-        else {
-          // Custom range - format as ISO dates for API
-          timeframe = `custom:${start.format('YYYY-MM-DD')}:${end.format('YYYY-MM-DD')}`;
-        }
-        
-        updateRevenueChart(charts.revenueChart, timeframe);
       });
       
-      // Setup other filters event handlers
-      document.getElementById('categoryTimeFilter').addEventListener('change', function() {
-        updateCategoryChart(charts.categoryChart, this.value);
-      });
-      
-      document.getElementById('regionTimeFilter').addEventListener('change', function() {
-        updateRegionalChart(charts.regionChart, this.value);
-      });
-      
-      document.getElementById('userGrowthPeriod').addEventListener('change', function() {
-        updateUserGrowthChart(charts.userGrowthChart, this.value);
-      });
-      
-      document.getElementById('conversionPeriod').addEventListener('change', function() {
-        updateConversionChart(charts.conversionChart, this.value);
-      });
-      
-      // Fetch data for initial load
+      // Fetch data and initialize charts and stats
       fetchDashboardStats();
       fetchKPIData();
-      
-      // Load initial chart data
-      updateRevenueChart(charts.revenueChart, '30days');
-      updateCategoryChart(charts.categoryChart, 'month');
-      updateRegionalChart(charts.regionChart, 'month');
-      updateUserGrowthChart(charts.userGrowthChart, '6months');
-      updateConversionChart(charts.conversionChart, 'month');
+      initializeCharts();
       
       // Add navigation handlers
       document.querySelectorAll('.nav-item').forEach(item => {

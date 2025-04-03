@@ -657,6 +657,54 @@
     .hidden-ai {
       opacity: 0.5;
     }
+    
+    /* Notification badge */
+    .notification-badge {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background-color: var(--danger-color);
+      color: white;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: bold;
+    }
+    
+    /* Notification popup */
+    .notification {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background-color: var(--primary-color);
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      opacity: 0;
+      transform: translateY(-20px);
+      transition: all 0.3s ease;
+      z-index: 9999;
+    }
+    
+    .notification.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    
+    /* Refresh spinner */
+    .refresh-spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(0, 0, 0, 0.1);
+      border-top: 2px solid var(--primary-color);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
   </style>
 </head>
 <body>
@@ -753,12 +801,17 @@
   </main>
   
   <script>
+    /* Global variables */
     // Global variables
     let currentSearch = '';
     let currentFilter = 'all';
     let currentChatId = null;
+    let currentConversationId = null;
     let chatData = [];
     let mainListRefreshInterval = null;
+    let chatRefreshInterval = null;
+    let newEscalatedCount = 0;
+    let notificationSound = new Audio('/static/sounds/notification.mp3');
 
     // Date formatting options
     const dateOptions = { 
@@ -1491,14 +1544,8 @@
       
       // Refresh chat list every 30 seconds
       mainListRefreshInterval = setInterval(() => {
-        // Only refresh if we're not in the middle of editing or viewing details
-        if (!document.querySelector('#chatPanel').classList.contains('d-none')) {
-          // If a chat is being viewed, just fetch in the background without disrupting the UI
-          fetchChatListSilently();
-        } else {
-          // If no chat is being viewed, refresh the entire list
-          fetchSupportChats();
-        }
+        // Fetch the chat list silently in all cases
+        fetchChatListSilently();
       }, 30000); // Every 30 seconds
     }
     
@@ -1510,7 +1557,7 @@
       }
     }
     
-    // Fetch chat list in the background without updating UI
+    // Fetch chat list in the background without disrupting the UI
     async function fetchChatListSilently() {
       try {
         let url = '/api/admin/support-chats';
@@ -1520,9 +1567,9 @@
         if (currentSearch) {
           params.append('search', currentSearch);
         }
-        if (currentFilter !== 'all') {
-          params.append('status', currentFilter);
-        }
+        
+        // For silent fetches, always check for escalated chats
+        params.append('status', 'escalated');
         
         if (params.toString()) {
           url += `?${params.toString()}`;
@@ -1535,30 +1582,36 @@
         
         const data = await response.json();
         if (data.success) {
-          // Update chat count
-          document.getElementById('chatCount').textContent = `${data.chats.length} chats`;
+          // Check if we have new escalated chats
+          const escalatedChats = data.chats.filter(chat => chat.status === 'escalated');
+          const oldEscalatedCount = newEscalatedCount;
+          newEscalatedCount = escalatedChats.length;
           
-          // Check if we have new chats (more chats than before or different newest chat)
-          const hasNewChats = data.chats.length > chatData.length || 
-                             (data.chats.length > 0 && chatData.length > 0 && 
-                              data.chats[0].id !== chatData[0].id);
-          
-          // Store chat data globally
-          chatData = data.chats;
-          
-          // If we have new chats, update the unread indicator on the chat list
-          if (hasNewChats) {
-            // Add a visual indicator that there are new chats
-            const chatListHeader = document.querySelector('.chat-list-header');
-            if (chatListHeader) {
-              if (!document.getElementById('newChatsIndicator')) {
-                const indicator = document.createElement('span');
-                indicator.id = 'newChatsIndicator';
-                indicator.className = 'badge bg-primary ms-2 new-chats-badge';
-                indicator.textContent = 'New';
-                chatListHeader.appendChild(indicator);
-              }
+          // Check if there are new escalated chats
+          if (newEscalatedCount > oldEscalatedCount) {
+            // Play notification sound
+            try {
+              notificationSound.play().catch(e => console.log('Could not play notification sound', e));
+            } catch (e) {
+              console.log('Error playing sound:', e);
             }
+            
+            // Add visual indicator in the sidebar
+            updateSidebarNotification(newEscalatedCount);
+            
+            // If we're not currently on the escalated filter, show a notification
+            if (currentFilter !== 'escalated') {
+              showNotification(`${newEscalatedCount} escalated chats need attention`);
+            }
+          }
+          
+          // Only update the UI if we're on the escalated filter
+          if (currentFilter === 'escalated') {
+            // Update chat count
+            document.getElementById('chatCount').textContent = `${escalatedChats.length} chats`;
+            
+            // Update the chat list
+            renderChatList(escalatedChats);
           }
         }
       } catch (error) {
@@ -1566,10 +1619,136 @@
       }
     }
     
+    // Update sidebar notification indicator
+    function updateSidebarNotification(count) {
+      const supportNavItem = document.querySelector('.nav-item[data-section="support"]');
+      
+      // Remove existing badge if present
+      const existingBadge = supportNavItem.querySelector('.notification-badge');
+      if (existingBadge) {
+        existingBadge.remove();
+      }
+      
+      // Add new badge if count > 0
+      if (count > 0) {
+        const badge = document.createElement('span');
+        badge.className = 'notification-badge';
+        badge.textContent = count;
+        supportNavItem.appendChild(badge);
+      }
+    }
+    
+    // Show a notification message
+    function showNotification(message) {
+      // Create notification element if it doesn't exist
+      let notification = document.getElementById('notification');
+      if (!notification) {
+        notification = document.createElement('div');
+        notification.id = 'notification';
+        notification.className = 'notification';
+        document.body.appendChild(notification);
+      }
+      
+      // Set notification message and show it
+      notification.textContent = message;
+      notification.classList.add('show');
+      
+      // Hide after 5 seconds
+      setTimeout(() => {
+        notification.classList.remove('show');
+      }, 5000);
+    }
+
+    // Start the auto-refresh when a chat is being viewed
+    function startChatRefresh() {
+      // Clear any existing interval first
+      stopChatRefresh();
+      
+      // Start a new interval if we have a conversation ID
+      if (currentConversationId) {
+        chatRefreshInterval = setInterval(() => {
+          refreshCurrentChat();
+        }, 5000); // Refresh every 5 seconds
+      }
+    }
+
+    // Stop the auto-refresh
+    function stopChatRefresh() {
+      if (chatRefreshInterval) {
+        clearInterval(chatRefreshInterval);
+        chatRefreshInterval = null;
+      }
+    }
+
+    // Refresh the current chat
+    function refreshCurrentChat() {
+      if (!currentConversationId) return;
+      
+      // Show a subtle loading indicator
+      const chatContainer = document.querySelector('#chatMessages');
+      if (!chatContainer) return;
+      
+      const loadingIndicator = document.createElement('div');
+      loadingIndicator.id = 'chatRefreshIndicator';
+      loadingIndicator.innerHTML = '<div class="refresh-spinner"></div>';
+      loadingIndicator.style.position = 'absolute';
+      loadingIndicator.style.top = '10px';
+      loadingIndicator.style.right = '10px';
+      loadingIndicator.style.opacity = '0.5';
+      
+      // Remove any existing indicator
+      const existingIndicator = document.querySelector('#chatRefreshIndicator');
+      if (existingIndicator) {
+        existingIndicator.remove();
+      }
+      
+      chatContainer.appendChild(loadingIndicator);
+      
+      // Fetch the conversation
+      fetch(`/api/admin/support-chats/conversation/${currentConversationId}`)
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            // Only update if we have new messages
+            const currentMessageCount = document.querySelectorAll('.chat-message').length;
+            if (data.messages.length > currentMessageCount / 2) { // Divide by 2 because we show user and AI as separate messages
+              // If we were viewing a specific chat in detail, load the conversation again
+              const chat = chatData.find(c => c.conversation_id === currentConversationId);
+              if (chat) {
+                loadConversationDetail(chat);
+              }
+            }
+          }
+          // Remove the loading indicator
+          const indicator = document.querySelector('#chatRefreshIndicator');
+          if (indicator) {
+            indicator.remove();
+          }
+        })
+        .catch(error => {
+          console.error('Error refreshing chat:', error);
+          // Remove the loading indicator
+          const indicator = document.querySelector('#chatRefreshIndicator');
+          if (indicator) {
+            indicator.remove();
+          }
+        });
+    }
+    
     // Initialize
     document.addEventListener('DOMContentLoaded', function() {
       checkAuth();
       displayCurrentDate();
+      
+      // Default to showing escalated chats
+      currentFilter = 'escalated';
+      document.querySelectorAll('.chat-filter-button').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.filter === 'escalated') {
+          btn.classList.add('active');
+        }
+      });
+      
       fetchSupportChats().then(() => {
         // After loading chats, check if we have a chat ID in the URL parameters
         const urlParams = new URLSearchParams(window.location.search);
@@ -1581,6 +1760,9 @@
           if (selectedChat) {
             // Set as current chat
             currentChatId = chatId;
+            if (selectedChat.conversation_id) {
+              currentConversationId = selectedChat.conversation_id;
+            }
             
             // Select in the UI
             const chatItem = document.querySelector(`.chat-item[data-id="${chatId}"]`);
@@ -1594,22 +1776,29 @@
               chatItem.classList.add('active');
             }
             
-            // Load chat detail
-            loadChatDetail(selectedChat);
+            // Load chat detail - if we have a conversation_id, load the full conversation
+            if (selectedChat.conversation_id) {
+              loadConversationDetail(selectedChat);
+            } else {
+              loadChatDetail(selectedChat);
+            }
             
-            // If respond parameter is set, focus on the response input
-            if (urlParams.get('respond') === 'true') {
-              setTimeout(() => {
-                const responseInput = document.getElementById('adminResponse');
-                if (responseInput) {
-                  responseInput.focus();
-                }
-              }, 500);
+            // Start chat refresh if needed
+            if (selectedChat.conversation_id) {
+              startChatRefresh();
             }
           }
         }
       });
+      
       startMainListRefresh();
+      
+      // Preload notification sound
+      try {
+        notificationSound.load();
+      } catch (e) {
+        console.log('Could not preload sound:', e);
+      }
     });
 
     // Handle page visibility changes
@@ -1635,172 +1824,6 @@
       stopMainListRefresh();
       stopChatRefresh();
     });
-
-    // Start the auto-refresh when a chat is being viewed
-    function startChatRefresh() {
-        // Clear any existing interval first
-        stopChatRefresh();
-        
-        // Start a new interval if we have a conversation ID
-        if (currentConversationId) {
-            chatRefreshInterval = setInterval(() => {
-                refreshCurrentChat();
-            }, 5000); // Refresh every 5 seconds
-        }
-    }
-
-    // Stop the auto-refresh
-    function stopChatRefresh() {
-        if (chatRefreshInterval) {
-            clearInterval(chatRefreshInterval);
-            chatRefreshInterval = null;
-        }
-    }
-
-    // Refresh the current chat
-    function refreshCurrentChat() {
-        if (!currentConversationId) return;
-        
-        // Show a subtle loading indicator
-        const chatContainer = document.querySelector('#chatMessages');
-        const loadingIndicator = document.createElement('div');
-        loadingIndicator.id = 'chatRefreshIndicator';
-        loadingIndicator.innerHTML = '<div class="spinner-border spinner-border-sm text-secondary" role="status"><span class="visually-hidden">Refreshing...</span></div>';
-        loadingIndicator.style.position = 'absolute';
-        loadingIndicator.style.top = '10px';
-        loadingIndicator.style.right = '10px';
-        loadingIndicator.style.opacity = '0.5';
-        
-        // Remove any existing indicator
-        const existingIndicator = document.querySelector('#chatRefreshIndicator');
-        if (existingIndicator) {
-            existingIndicator.remove();
-        }
-        
-        chatContainer.appendChild(loadingIndicator);
-        
-        // Fetch the conversation
-        fetch(`/api/admin/support-chats/conversation/${currentConversationId}`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Only update if we have new messages
-                    const currentMessageCount = document.querySelectorAll('.chat-message').length;
-                    if (data.messages.length > currentMessageCount / 2) { // Divide by 2 because we show user and AI as separate messages
-                        displayChatMessages(data.messages);
-                    }
-                }
-                // Remove the loading indicator
-                const indicator = document.querySelector('#chatRefreshIndicator');
-                if (indicator) {
-                    indicator.remove();
-                }
-            })
-            .catch(error => {
-                console.error('Error refreshing chat:', error);
-                // Remove the loading indicator
-                const indicator = document.querySelector('#chatRefreshIndicator');
-                if (indicator) {
-                    indicator.remove();
-                }
-            });
-    }
-
-    // Display a conversation with multiple messages
-    function displayChatMessages(messages) {
-        if (!messages || messages.length === 0) return;
-        
-        const chatContainer = document.querySelector('#chatDetails');
-        const userName = messages[0].users?.name || 'Customer';
-        
-        // Prepare header
-        let content = `
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5>Conversation with ${userName}</h5>
-                <div class="btn-group">
-                    <button id="toggleAiButton" class="btn btn-outline-secondary btn-sm" onclick="toggleAiResponse()">
-                        ${messages[0].hide_ai_response ? 'Show AI Response' : 'Hide AI Response'}
-                    </button>
-                </div>
-            </div>
-            <div id="chatMessages" class="border rounded p-3 mb-3 bg-light" style="max-height: 400px; overflow-y: auto;">
-        `;
-        
-        // Add each message
-        messages.forEach(msg => {
-            // User message
-            content += `
-                <div class="chat-message mb-2">
-                    <strong class="text-primary">Customer:</strong>
-                    <div class="border rounded p-2 bg-white">${msg.message}</div>
-                </div>
-            `;
-            
-            // AI response (conditionally show based on hide_ai_response flag)
-            if (!msg.hide_ai_response) {
-                content += `
-                    <div class="chat-message mb-2 ms-4">
-                        <strong class="text-info">AI Response:</strong>
-                        <div class="border rounded p-2 bg-white">${msg.ai_response}</div>
-                    </div>
-                `;
-            }
-            
-            // Admin response (if it exists)
-            if (msg.admin_response) {
-                content += `
-                    <div class="chat-message mb-2 ms-4">
-                        <strong class="text-success">Support Team:</strong>
-                        <div class="border rounded p-2 bg-white">${msg.admin_response}</div>
-                    </div>
-                `;
-            }
-        });
-        
-        content += '</div>';
-        
-        // Add info and response form
-        const latestMessage = messages[messages.length - 1];
-        content += `
-            <div class="card mb-3">
-                <div class="card-header">
-                    <strong>Message Details</strong>
-                </div>
-                <div class="card-body">
-                    <div class="row mb-3">
-                        <div class="col-md-4"><strong>Customer:</strong></div>
-                        <div class="col-md-8">${latestMessage.users?.name || 'Unknown'}</div>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-md-4"><strong>Status:</strong></div>
-                        <div class="col-md-8"><span class="badge bg-${getStatusBadgeColor(latestMessage.status)}">${latestMessage.status}</span></div>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-md-4"><strong>Created:</strong></div>
-                        <div class="col-md-8">${new Date(latestMessage.created_at).toLocaleString()}</div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="card">
-                <div class="card-header">
-                    <strong>Respond to Customer</strong>
-                </div>
-                <div class="card-body">
-                    <form id="responseForm" onsubmit="sendAdminReply('${latestMessage.id}'); return false;">
-                        <div class="mb-3">
-                            <textarea id="adminResponse" class="form-control" rows="3" placeholder="Type your response..." required></textarea>
-                        </div>
-                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                            <button type="submit" class="btn btn-primary">Send Reply</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        `;
-        
-        chatContainer.innerHTML = content;
-    }
   </script>
 </body>
 </html>

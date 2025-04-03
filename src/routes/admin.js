@@ -1104,7 +1104,7 @@ router.get('/support-chats/conversation/:conversationId', async (req, res) => {
         *,
         users(name, phone)
       `)
-      .filter('conversation_id', 'eq', conversationId)  // Using filter instead of eq for better type handling
+      .filter('support_chats.conversation_id', 'eq', conversationId)  // Using explicit table name reference
       .order('created_at', { ascending: true });
     
     if (error) {
