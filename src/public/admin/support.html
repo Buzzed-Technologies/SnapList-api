@@ -684,32 +684,70 @@
     let chatRefreshInterval = null;
     let mainListRefreshInterval = null;
     
-    // Format a detailed time with relative display if recent
-    function formatDetailedTime(timeStr) {
-      const date = new Date(timeStr);
+    // Format a timestamp into a relative time string like "2 hours ago"
+    function formatRelativeTime(timestamp) {
       const now = new Date();
-      const diff = now - date;
+      const date = new Date(timestamp);
+      const diffInSeconds = Math.floor((now - date) / 1000);
       
-      // Less than 1 hour ago
-      if (diff < 60 * 60 * 1000) {
-        const minutes = Math.floor(diff / (60 * 1000));
-        return minutes <= 0 ? 'just now' : `${minutes} min ago`;
+      if (diffInSeconds < 60) {
+        return 'just now';
       }
       
-      // Today
-      if (date.toDateString() === now.toDateString()) {
-        return `Today at ${date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`;
+      const diffInMinutes = Math.floor(diffInSeconds / 60);
+      if (diffInMinutes < 60) {
+        return `${diffInMinutes} ${diffInMinutes === 1 ? 'minute' : 'minutes'} ago`;
       }
       
-      // Yesterday
-      const yesterday = new Date(now);
-      yesterday.setDate(yesterday.getDate() - 1);
-      if (date.toDateString() === yesterday.toDateString()) {
-        return `Yesterday at ${date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`;
+      const diffInHours = Math.floor(diffInMinutes / 60);
+      if (diffInHours < 24) {
+        return `${diffInHours} ${diffInHours === 1 ? 'hour' : 'hours'} ago`;
       }
       
-      // Older
-      return date.toLocaleString();
+      const diffInDays = Math.floor(diffInHours / 24);
+      if (diffInDays < 7) {
+        return `${diffInDays} ${diffInDays === 1 ? 'day' : 'days'} ago`;
+      }
+      
+      const diffInWeeks = Math.floor(diffInDays / 7);
+      if (diffInWeeks < 4) {
+        return `${diffInWeeks} ${diffInWeeks === 1 ? 'week' : 'weeks'} ago`;
+      }
+      
+      const diffInMonths = Math.floor(diffInDays / 30);
+      if (diffInMonths < 12) {
+        return `${diffInMonths} ${diffInMonths === 1 ? 'month' : 'months'} ago`;
+      }
+      
+      const diffInYears = Math.floor(diffInDays / 365);
+      return `${diffInYears} ${diffInYears === 1 ? 'year' : 'years'} ago`;
+    }
+    
+    // Helper function to truncate text
+    function truncateText(text, maxLength) {
+      if (!text) return '';
+      return text.length > maxLength ? text.slice(0, maxLength) + '...' : text;
+    }
+    
+    // Format a timestamp into a detailed time string
+    function formatDetailedTime(timestamp) {
+      if (!timestamp) return 'N/A';
+      const date = new Date(timestamp);
+      return date.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+    
+    // Get user initials from name
+    function getUserInitials(name) {
+      if (!name) return '?';
+      const parts = name.split(' ');
+      if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+      return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
     }
     
     // Display current date
@@ -752,25 +790,30 @@
     }
     
     // Fetch Support Chats
-    async function fetchSupportChats() {
+    async function fetchSupportChats(searchQuery = null, statusFilter = null) {
       try {
         const chatList = document.getElementById('chatList');
-        chatList.innerHTML = `
-          <div class="loading-indicator">
-            <div class="loading-spinner"></div>
-          </div>
-        `;
+        chatList.innerHTML = '<div class="loading-indicator">Loading chats...</div>';
         
-        let url = '/api/admin/support-chats';
+        // Show loading first
+        document.getElementById('chatCount').textContent = '...';
         
         // Add search and filter
         const params = new URLSearchParams();
-        if (currentSearch) {
-          params.append('search', currentSearch);
+        
+        // Use the provided parameters or fall back to the current values
+        const search = searchQuery !== null ? searchQuery : currentSearch;
+        const filter = statusFilter !== null ? statusFilter : currentFilter;
+        
+        if (search) {
+          params.append('search', search);
         }
-        if (currentFilter !== 'all') {
-          params.append('status', currentFilter);
+        
+        if (filter !== 'all') {
+          params.append('status', filter);
         }
+        
+        let url = '/api/admin/support-chats';
         
         if (params.toString()) {
           url += `?${params.toString()}`;
