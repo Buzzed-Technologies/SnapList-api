@@ -499,17 +499,9 @@
     
     <div class="nav-section">
       <div class="nav-section-title">Communications</div>
-      <a href="/admin/support.html" class="nav-item" data-section="support">
+      <a href="#" class="nav-item" data-section="support">
         <span class="nav-item-icon">💬</span>
         Support Chats
-      </a>
-    </div>
-    
-    <div class="nav-section">
-      <div class="nav-section-title">Settings</div>
-      <a href="#" class="nav-item">
-        <span class="nav-item-icon">⚙️</span>
-        Configuration
       </a>
     </div>
     
@@ -530,13 +522,13 @@
       <div class="stat-card">
         <div class="stat-title">Pending Payouts</div>
         <div class="stat-value" id="pendingPayouts">$0</div>
-        <div class="stat-change"><span id="pendingPayoutsCount">0</span> payments awaiting processing</div>
+        <div class="stat-change"><span id="pendingPayoutsCount">0</span>  payments awaiting processing</div>
       </div>
       
       <div class="stat-card">
         <div class="stat-title">Processed This Month</div>
         <div class="stat-value" id="monthlyPayouts">$0</div>
-        <div class="stat-change"><span id="monthlyPayoutsCount">0</span> payments processed</div>
+        <div class="stat-change"><span id="monthlyPayoutsCount">0</span>  payments processed</div>
       </div>
       
       <div class="stat-card">
@@ -882,9 +874,249 @@
     }
     
     // View Payout
-    function viewPayout(payoutId) {
-      alert('View payout details: ' + payoutId);
-      // In a real implementation, this would navigate to a payout details page
+    async function viewPayout(payoutId) {
+      try {
+        const response = await fetch(`/api/admin/payouts/${payoutId}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch payout details');
+        }
+        
+        const data = await response.json();
+        if (!data.success) {
+          throw new Error(data.message || 'Failed to fetch payout details');
+        }
+        
+        const payout = data.payout;
+        
+        // Format the amount
+        const amount = new Intl.NumberFormat('en-US', { 
+          style: 'currency', 
+          currency: 'USD',
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        }).format(payout.amount);
+        
+        // Format dates
+        const requestDate = new Date(payout.created_at).toLocaleDateString();
+        const processedDate = payout.processed_at ? new Date(payout.processed_at).toLocaleDateString() : 'Not processed';
+        
+        // Create modal content for viewing payout details
+        const modalHTML = `
+          <div class="modal-header">
+            <h2>Payout Details</h2>
+            <button id="closeViewModal" class="close-button">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div class="payout-detail">
+              <div class="detail-row">
+                <div class="detail-label">Payout ID:</div>
+                <div class="detail-value">${payout.id}</div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">User:</div>
+                <div class="detail-value">${payout.user_name || 'Unknown'}</div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">Amount:</div>
+                <div class="detail-value">${amount}</div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">Items Sold:</div>
+                <div class="detail-value">${payout.items_count || 0}</div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">Payment Method:</div>
+                <div class="detail-value">${payout.phone || 'Not specified'}</div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">Requested:</div>
+                <div class="detail-value">${requestDate}</div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">Processed:</div>
+                <div class="detail-value">${processedDate}</div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">Status:</div>
+                <div class="detail-value">
+                  <span class="status-badge ${payout.status === 'pending' ? 'status-pending' : 
+                    payout.status === 'completed' ? 'status-paid' : 'status-failed'}">
+                    ${payout.status.charAt(0).toUpperCase() + payout.status.slice(1)}
+                  </span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="payout-items">
+              <h3>Items Included</h3>
+              <ul class="items-list" id="payoutItems">
+                <li class="loading-item">Loading items...</li>
+              </ul>
+            </div>
+            
+            <div class="form-actions">
+              ${payout.status === 'pending' ? 
+                `<button type="button" id="processPayoutBtn" class="primary-button" data-id="${payout.id}">Process Payout</button>` : ''}
+              <button type="button" id="closeBtn" class="secondary-button">Close</button>
+            </div>
+          </div>
+        `;
+        
+        // Add additional styles
+        if (!document.getElementById('payoutModalStyles')) {
+          const modalStyles = document.createElement('style');
+          modalStyles.id = 'payoutModalStyles';
+          modalStyles.textContent = `
+            .payout-detail {
+              margin-bottom: 24px;
+              background-color: var(--background-color);
+              border-radius: 8px;
+              padding: 16px;
+            }
+            
+            .detail-row {
+              display: flex;
+              margin-bottom: 12px;
+              font-size: 14px;
+            }
+            
+            .detail-label {
+              font-weight: 600;
+              width: 130px;
+              color: var(--text-secondary);
+            }
+            
+            .detail-value {
+              flex: 1;
+            }
+            
+            .payout-items h3 {
+              font-size: 16px;
+              margin-bottom: 12px;
+              font-weight: 600;
+            }
+            
+            .items-list {
+              list-style: none;
+              padding: 0;
+              margin: 0;
+              max-height: 200px;
+              overflow-y: auto;
+            }
+            
+            .items-list li {
+              padding: 10px;
+              border-bottom: 1px solid var(--border-color);
+              display: flex;
+              align-items: center;
+            }
+            
+            .items-list li:last-child {
+              border-bottom: none;
+            }
+            
+            .item-thumbnail {
+              width: 40px;
+              height: 40px;
+              object-fit: cover;
+              margin-right: 12px;
+              border-radius: 4px;
+            }
+            
+            .loading-item {
+              text-align: center;
+              color: var(--text-secondary);
+            }
+          `;
+          document.head.appendChild(modalStyles);
+        }
+        
+        // Create and display modal
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.innerHTML = `<div class="modal-content">${modalHTML}</div>`;
+        document.body.appendChild(modal);
+        
+        // Show the modal
+        setTimeout(() => {
+          modal.classList.add('show');
+        }, 10);
+        
+        // Load payout items 
+        fetchPayoutItems(payoutId);
+        
+        // Close modal handlers
+        document.getElementById('closeViewModal').addEventListener('click', () => {
+          modal.classList.remove('show');
+          setTimeout(() => modal.remove(), 300);
+        });
+        
+        document.getElementById('closeBtn').addEventListener('click', () => {
+          modal.classList.remove('show');
+          setTimeout(() => modal.remove(), 300);
+        });
+        
+        // Process payout action
+        const processBtn = document.getElementById('processPayoutBtn');
+        if (processBtn) {
+          processBtn.addEventListener('click', async () => {
+            await processPayout(payoutId);
+            modal.classList.remove('show');
+            setTimeout(() => modal.remove(), 300);
+          });
+        }
+      } catch (error) {
+        console.error('Error viewing payout details:', error);
+        alert(`Error: ${error.message}`);
+      }
+    }
+    
+    // Fetch Payout Items
+    async function fetchPayoutItems(payoutId) {
+      try {
+        const response = await fetch(`/api/admin/payouts/${payoutId}/items`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch payout items');
+        }
+        
+        const data = await response.json();
+        if (!data.success) {
+          throw new Error(data.message || 'Failed to fetch payout items');
+        }
+        
+        const itemsList = document.getElementById('payoutItems');
+        
+        if (data.items.length === 0) {
+          itemsList.innerHTML = '<li class="loading-item">No items found for this payout</li>';
+          return;
+        }
+        
+        itemsList.innerHTML = '';
+        
+        data.items.forEach(item => {
+          const itemEl = document.createElement('li');
+          
+          // Get the image URL or use a placeholder
+          const imageUrl = item.image_url 
+            ? `https://lsrdviupiuoztnccwdxk.supabase.co/storage/v1/object/public/snaplist-images/uploads/${item.image_url}` 
+            : '/static/img/placeholder.png';
+          
+          itemEl.innerHTML = `
+            <img src="${imageUrl}" alt="${item.title}" class="item-thumbnail" onerror="this.src='/static/img/placeholder.png'">
+            <div class="item-details">
+              <div class="item-title">${item.title}</div>
+              <div class="item-price">$${item.price.toFixed(2)}</div>
+            </div>
+          `;
+          
+          itemsList.appendChild(itemEl);
+        });
+      } catch (error) {
+        console.error('Error fetching payout items:', error);
+        document.getElementById('payoutItems').innerHTML = `
+          <li class="loading-item">Error loading items: ${error.message}</li>
+        `;
+      }
     }
     
     // Process Payout

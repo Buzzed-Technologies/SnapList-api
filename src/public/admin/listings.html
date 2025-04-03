@@ -461,14 +461,6 @@
       </a>
     </div>
     
-    <div class="nav-section">
-      <div class="nav-section-title">Settings</div>
-      <a href="#" class="nav-item">
-        <span class="nav-item-icon">⚙️</span>
-        Configuration
-      </a>
-    </div>
-    
     <div class="sidebar-footer">
       <button id="logoutButton" class="logout-button">Logout</button>
     </div>
@@ -671,10 +663,12 @@
           maximumFractionDigits: 0
         }).format(listing.price);
         
-        // Get the first image or use a placeholder
-        const imageUrl = listing.images && listing.images.length > 0 
-          ? `https://lsrdviupiuoztnccwdxk.supabase.co/storage/v1/object/public/snaplist-images/uploads/${listing.images[0]}`
-          : '/static/img/placeholder.png';
+        // Get the image using the image_url field or fallback to the images array
+        const imageUrl = listing.image_url 
+          ? `https://lsrdviupiuoztnccwdxk.supabase.co/storage/v1/object/public/snaplist-images/uploads/${listing.image_url}`
+          : (listing.images && listing.images.length > 0 
+              ? `https://lsrdviupiuoztnccwdxk.supabase.co/storage/v1/object/public/snaplist-images/uploads/${listing.images[0]}`
+              : '/static/img/placeholder.png');
         
         card.innerHTML = `
           <img src="${imageUrl}" alt="${listing.title}" class="listing-image" onerror="this.src='/static/img/placeholder.png'">
@@ -828,11 +822,17 @@
               <div class="form-group">
                 <label>Images</label>
                 <div class="image-preview">
-                  ${listing.images && listing.images.map(img => 
+                  ${listing.image_url ? 
                     `<div class="image-item">
-                      <img src="https://lsrdviupiuoztnccwdxk.supabase.co/storage/v1/object/public/snaplist-images/uploads/${img}" alt="Listing image">
-                    </div>`
-                  ).join('') || 'No images available'}
+                      <img src="https://lsrdviupiuoztnccwdxk.supabase.co/storage/v1/object/public/snaplist-images/uploads/${listing.image_url}" alt="Listing image">
+                    </div>` : 
+                    (listing.images && listing.images.length > 0 ? 
+                      listing.images.map(img => 
+                        `<div class="image-item">
+                          <img src="https://lsrdviupiuoztnccwdxk.supabase.co/storage/v1/object/public/snaplist-images/uploads/${img}" alt="Listing image">
+                        </div>`
+                      ).join('') : 'No images available')
+                  }
                 </div>
               </div>
               <div class="form-actions">
@@ -842,6 +842,139 @@
             </form>
           </div>
         `;
+        
+        // Add styles for the modal if they don't exist
+        if (!document.getElementById('modalStyles')) {
+          const modalStyles = document.createElement('style');
+          modalStyles.id = 'modalStyles';
+          modalStyles.textContent = `
+            .modal {
+              display: flex;
+              position: fixed;
+              top: 0;
+              left: 0;
+              right: 0;
+              bottom: 0;
+              background-color: rgba(0, 0, 0, 0.5);
+              z-index: 1000;
+              opacity: 0;
+              pointer-events: none;
+              transition: opacity 0.3s ease;
+              justify-content: center;
+              align-items: center;
+            }
+            
+            .modal.show {
+              opacity: 1;
+              pointer-events: auto;
+            }
+            
+            .modal-content {
+              background-color: var(--card-background);
+              border-radius: 12px;
+              width: 90%;
+              max-width: 500px;
+              box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            }
+            
+            .modal-header {
+              padding: 16px 20px;
+              border-bottom: 1px solid var(--border-color);
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+            }
+            
+            .modal-header h2 {
+              font-size: 18px;
+              font-weight: 600;
+            }
+            
+            .close-button {
+              background: none;
+              border: none;
+              font-size: 24px;
+              cursor: pointer;
+              color: var(--text-secondary);
+            }
+            
+            .modal-body {
+              padding: 20px;
+            }
+            
+            .form-group {
+              margin-bottom: 16px;
+            }
+            
+            .form-group label {
+              display: block;
+              margin-bottom: 6px;
+              font-size: 14px;
+              font-weight: 500;
+            }
+            
+            .form-group input,
+            .form-group textarea,
+            .form-group select {
+              width: 100%;
+              padding: 10px 12px;
+              background-color: var(--background-color);
+              border: 1px solid var(--border-color);
+              border-radius: 6px;
+              font-size: 14px;
+              color: var(--text-primary);
+            }
+            
+            .form-actions {
+              display: flex;
+              justify-content: flex-end;
+              gap: 12px;
+              margin-top: 20px;
+            }
+            
+            .primary-button {
+              background-color: var(--primary-color);
+              color: white;
+              border: none;
+              padding: 10px 16px;
+              border-radius: 6px;
+              font-weight: 500;
+              cursor: pointer;
+            }
+            
+            .secondary-button {
+              background-color: var(--background-color);
+              color: var(--text-primary);
+              border: 1px solid var(--border-color);
+              padding: 10px 16px;
+              border-radius: 6px;
+              font-weight: 500;
+              cursor: pointer;
+            }
+            
+            .image-preview {
+              display: flex;
+              flex-wrap: wrap;
+              gap: 10px;
+              margin-top: 8px;
+            }
+            
+            .image-item {
+              width: 80px;
+              height: 80px;
+              border-radius: 4px;
+              overflow: hidden;
+              border: 1px solid var(--border-color);
+            }
+            
+            .image-item img {
+              width: 100%;
+              height: 100%;
+              object-fit: cover;
+            }
+          `;
+          document.head.appendChild(modalStyles);
+        }
         
         // Create and display modal
         const modal = document.createElement('div');

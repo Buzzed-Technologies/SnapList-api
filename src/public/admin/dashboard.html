@@ -403,14 +403,6 @@
       </a>
     </div>
     
-    <div class="nav-section">
-      <div class="nav-section-title">Settings</div>
-      <a href="#" class="nav-item">
-        <span class="nav-item-icon">⚙️</span>
-        Configuration
-      </a>
-    </div>
-    
     <div class="sidebar-footer">
       <button id="logoutButton" class="logout-button">Logout</button>
     </div>
@@ -569,12 +561,40 @@
           document.getElementById('activeListings').textContent = data.stats.activeListingCount;
           document.getElementById('completedSales').textContent = data.stats.soldCount;
           
-          // Calculate month-over-month changes (this would ideally come from the API)
-          // For now we'll use placeholder percentages
-          document.getElementById('revenueChange').textContent = '↑ 12.5% from last month';
-          document.getElementById('usersChange').textContent = '↑ 5.2% from last month';
-          document.getElementById('listingsChange').textContent = '↑ 8.7% from last month';
-          document.getElementById('salesChange').textContent = '↑ 15.3% from last month';
+          // Update month-over-month changes from API
+          if (data.stats.monthlyChanges) {
+            const formatPercentage = (val) => {
+              const prefix = val >= 0 ? '↑ ' : '↓ ';
+              return `${prefix}${Math.abs(val).toFixed(1)}% from last month`;
+            };
+            
+            const changes = data.stats.monthlyChanges;
+            if (changes.revenue !== undefined) {
+              document.getElementById('revenueChange').textContent = formatPercentage(changes.revenue);
+              document.getElementById('revenueChange').className = `stat-change ${changes.revenue >= 0 ? 'positive' : 'negative'}`;
+            }
+            
+            if (changes.users !== undefined) {
+              document.getElementById('usersChange').textContent = formatPercentage(changes.users);
+              document.getElementById('usersChange').className = `stat-change ${changes.users >= 0 ? 'positive' : 'negative'}`;
+            }
+            
+            if (changes.listings !== undefined) {
+              document.getElementById('listingsChange').textContent = formatPercentage(changes.listings);
+              document.getElementById('listingsChange').className = `stat-change ${changes.listings >= 0 ? 'positive' : 'negative'}`;
+            }
+            
+            if (changes.sales !== undefined) {
+              document.getElementById('salesChange').textContent = formatPercentage(changes.sales);
+              document.getElementById('salesChange').className = `stat-change ${changes.sales >= 0 ? 'positive' : 'negative'}`;
+            }
+          } else {
+            // Hide change stats if not available
+            document.getElementById('revenueChange').style.display = 'none';
+            document.getElementById('usersChange').style.display = 'none';
+            document.getElementById('listingsChange').style.display = 'none';
+            document.getElementById('salesChange').style.display = 'none';
+          }
         }
       } catch (error) {
         console.error('Error fetching dashboard stats:', error);
