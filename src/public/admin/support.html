@@ -2048,152 +2048,124 @@
     // Initialize notification sound
     function initNotificationSound() {
       try {
-        // Fixed beep sound - browser-compatible MP3 encoding
-        const base64Sound = 'data:audio/mp3;base64,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';
+        // Use a real MP3 file instead of base64 encoded data
+        notificationSound = new Audio('/static/sounds/snapnotif.mp3');
         
-        // Create audio element
-        notificationSound = new Audio(base64Sound);
+        // Set properties
         notificationSound.volume = 0.8;
         notificationSound.preload = 'auto';
         
-        // Mark document as ready for audio
+        // Mark document as having interacted
         document.documentElement.setAttribute('data-user-interacted', 'true');
         
-        // Try to load the sound ahead of time
-        notificationSound.load();
-        
-        // First try a simple play/pause to prime the audio element
-        try {
-          notificationSound.muted = true;
-          const promise = notificationSound.play();
-          if (promise !== undefined) {
-            promise
-              .then(() => {
-                console.log("Initial muted sound primed");
-                notificationSound.pause();
-                notificationSound.currentTime = 0;
-                notificationSound.muted = false;
-              })
-              .catch(err => {
-                console.warn("Initial silent priming failed:", err);
-              });
-          }
-        } catch (e) {
-          console.warn("Pre-loading error:", e);
-        }
-        
-        // Set up user interaction handler
+        // Add interaction listeners to unlock audio
         const unlockAudio = () => {
           console.log("User interaction detected - unlocking audio");
           document.documentElement.setAttribute('data-user-interacted', 'true');
           
-          // Try to play a silent sound to unlock audio
-          const silentSound = new Audio("data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//uQZAAP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAETEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVU=");
-          silentSound.volume = 0.1;
-          
-          silentSound.play()
-            .then(() => {
-              console.log("Audio context unlocked by user");
-              
-              // Now try to prime the actual notification sound
-              notificationSound.play()
-                .then(() => {
-                  console.log("Notification sound primed");
-                  notificationSound.pause();
-                  notificationSound.currentTime = 0;
-                })
-                .catch(err => {
-                  console.warn("Couldn't prime notification sound:", err);
-                });
-                
-              // Remove listeners after successful unlock
-              document.removeEventListener('click', unlockAudio);
-              document.removeEventListener('touchstart', unlockAudio);
-            })
-            .catch(err => {
-              console.warn("Couldn't unlock audio context:", err);
-            });
+          // Try to play a silent sound to unlock audio context
+          const quietSound = new Audio('/static/sounds/snapnotif.mp3');
+          quietSound.volume = 0.01; // Very quiet
+          quietSound.play().then(() => {
+            console.log("Audio context unlocked by user interaction");
+            quietSound.pause();
+            quietSound.currentTime = 0;
+          }).catch(err => {
+            console.warn("Couldn't unlock audio context:", err);
+          });
         };
         
-        // Add interaction listeners
+        // Add these listeners to the whole document
         document.addEventListener('click', unlockAudio, { once: true });
         document.addEventListener('touchstart', unlockAudio, { once: true });
-        
-        // Provide a custom play method
-        notificationSound.playSound = function() {
-          this.currentTime = 0;
-          this.muted = false;
-          return this.play();
-        };
         
         console.log('Notification sound initialized');
       } catch (e) {
         console.error('Error initializing notification sound:', e);
-        notificationSound = {
-          playSound: function() {
-            console.log('Notification sound fallback');
-            return Promise.resolve();
-          }
-        };
+        notificationSound = null;
       }
     }
 
     // Play notification sound
     function playNotificationSound() {
-      if (!notificationSound) {
-        console.warn('Notification sound not initialized');
-        return;
-      }
-      
       try {
-        // Force autoplay by trying multiple approaches in sequence
+        // Just directly create and play the sound
+        const sound = new Audio('/static/sounds/snapnotif.mp3');
+        sound.volume = 1.0;
         
-        // First try - direct play with unmuted
-        notificationSound.currentTime = 0;
-        notificationSound.muted = false;
-        notificationSound.volume = 0.8;
+        // Create a user interaction if possible (click event)
+        try {
+          // Create a temporary button and click it
+          const tempButton = document.createElement('button');
+          tempButton.style.display = 'none';
+          document.body.appendChild(tempButton);
+          tempButton.click();
+          document.body.removeChild(tempButton);
+        } catch (e) {
+          console.log('Could not simulate user interaction');
+        }
         
-        const playPromise = notificationSound.play();
+        // Play the sound and handle errors
+        const playPromise = sound.play();
         
         if (playPromise !== undefined) {
           playPromise.then(() => {
             console.log('Notification sound played successfully');
-          }).catch(e => {
-            console.warn('Direct play failed, trying backup approach:', e);
+          }).catch(error => {
+            console.warn('Failed to play notification sound:', error);
+            showVisualNotification();
             
-            // Second try - play muted first, then unmute
-            notificationSound.muted = true;
-            notificationSound.play()
-              .then(() => {
-                notificationSound.muted = false;
-                console.log('Notification sound played (second attempt)');
-              })
-              .catch(e2 => {
-                console.warn('Second attempt failed:', e2);
-                
-                // Third try - create new audio instance
-                try {
-                  const newSound = new Audio('data:audio/mp3;base64,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');
-                  newSound.volume = 1.0; // Maximum volume
-                  newSound.play().catch(() => {
-                    // If all audio approaches fail, use visual notification
-                    showVisualNotification();
+            // If we need permission, show the button
+            if (error.name === 'NotAllowedError') {
+              const soundButton = document.createElement('button');
+              soundButton.textContent = '🔊 Enable Sound Notifications';
+              soundButton.id = 'sound-permission-button';
+              soundButton.style.position = 'fixed';
+              soundButton.style.top = '20px';
+              soundButton.style.left = '50%';
+              soundButton.style.transform = 'translateX(-50%)';
+              soundButton.style.zIndex = '10000';
+              soundButton.style.padding = '10px 20px';
+              soundButton.style.backgroundColor = '#FF6A00';
+              soundButton.style.color = 'white';
+              soundButton.style.border = 'none';
+              soundButton.style.borderRadius = '4px';
+              soundButton.style.cursor = 'pointer';
+              soundButton.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
+              
+              // When clicked, try to play the sound
+              soundButton.onclick = () => {
+                new Audio('/static/sounds/snapnotif.mp3').play()
+                  .then(() => {
+                    // It worked, remember that user has interacted
+                    document.documentElement.setAttribute('data-user-interacted', 'true');
                   });
-                } catch {
-                  showVisualNotification();
-                }
-              });
+                soundButton.remove();
+              };
+              
+              // Only add if not already present
+              if (!document.getElementById('sound-permission-button')) {
+                document.body.appendChild(soundButton);
+                
+                // Remove after 10 seconds
+                setTimeout(() => {
+                  if (document.body.contains(soundButton)) {
+                    soundButton.remove();
+                  }
+                }, 10000);
+              }
+            }
           });
         } else {
-          // Fallback for browsers without Promise support
+          // For browsers without promise support
           showVisualNotification();
         }
       } catch (error) {
-        console.error('Error in playNotificationSound:', error);
+        console.error('Error playing notification sound:', error);
         showVisualNotification();
       }
     }
-    
+
     // Show a more noticeable visual notification when audio can't be played
     function showVisualNotification() {
       // Create notification element if it doesn't exist
