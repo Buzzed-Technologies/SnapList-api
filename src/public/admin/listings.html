@@ -668,10 +668,10 @@
           ? `https://lsrdviupiuoztnccwdxk.supabase.co/storage/v1/object/public/snaplist-images/uploads/${listing.image_url}`
           : (listing.images && listing.images.length > 0 
               ? `https://lsrdviupiuoztnccwdxk.supabase.co/storage/v1/object/public/snaplist-images/uploads/${listing.images[0]}`
-              : '/static/img/no-image.png');
+              : '/img/logo.png');
         
         card.innerHTML = `
-          <img src="${imageUrl}" alt="${listing.title}" class="listing-image" onerror="this.src='/static/img/no-image.png'">
+          <img src="${imageUrl}" alt="${listing.title}" class="listing-image" onerror="this.src='/img/logo.png'">
           <div class="listing-content">
             <h3 class="listing-title">${listing.title}</h3>
             <div class="listing-price">${price}</div>
@@ -770,9 +770,263 @@
     }
     
     // View Listing
-    function viewListing(listingId) {
-      alert('View listing details: ' + listingId);
-      // In a real implementation, this would navigate to a listing details page
+    async function viewListing(listingId) {
+      try {
+        const response = await fetch(`/api/admin/listings/${listingId}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch listing details');
+        }
+        
+        const data = await response.json();
+        if (!data.success) {
+          throw new Error(data.message || 'Failed to fetch listing details');
+        }
+        
+        const listing = data.listing;
+        
+        // Format the date
+        const listedDate = new Date(listing.created_at).toLocaleDateString();
+        const updatedDate = new Date(listing.updated_at).toLocaleDateString();
+        
+        // Format price
+        const price = new Intl.NumberFormat('en-US', { 
+          style: 'currency', 
+          currency: 'USD',
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        }).format(listing.price);
+        
+        // Determine status class
+        let statusClass = 'status-active';
+        if (listing.status === 'sold') statusClass = 'status-sold';
+        else if (listing.status === 'pending') statusClass = 'status-pending';
+        else if (listing.status === 'removed') statusClass = 'status-removed';
+        
+        // Create modal content for viewing
+        const modalHTML = `
+          <div class="modal-header">
+            <h2>Listing Details</h2>
+            <button id="closeViewModal" class="close-button">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div class="view-listing">
+              <!-- Image gallery -->
+              <div class="image-gallery">
+                ${listing.image_url ? 
+                  `<img src="https://lsrdviupiuoztnccwdxk.supabase.co/storage/v1/object/public/snaplist-images/uploads/${listing.image_url}" alt="${listing.title}" class="primary-image" onerror="this.src='/img/logo.png'">` : 
+                  (listing.images && listing.images.length > 0 ? 
+                    `<img src="https://lsrdviupiuoztnccwdxk.supabase.co/storage/v1/object/public/snaplist-images/uploads/${listing.images[0]}" alt="${listing.title}" class="primary-image" onerror="this.src='/img/logo.png'">` : 
+                    `<div class="no-image">No image available</div>`
+                  )
+                }
+              </div>
+              
+              <!-- Listing details -->
+              <div class="listing-header">
+                <h3>${listing.title}</h3>
+                <div class="listing-info">
+                  <span class="status-badge ${statusClass}">${listing.status.charAt(0).toUpperCase() + listing.status.slice(1)}</span>
+                  <span class="price">${price}</span>
+                </div>
+              </div>
+              
+              <div class="listing-details-grid">
+                <div class="detail-row">
+                  <div class="detail-label">Seller:</div>
+                  <div class="detail-value">${listing.user_name || 'Unknown'}</div>
+                </div>
+                <div class="detail-row">
+                  <div class="detail-label">Listed:</div>
+                  <div class="detail-value">${listedDate}</div>
+                </div>
+                <div class="detail-row">
+                  <div class="detail-label">Last Updated:</div>
+                  <div class="detail-value">${updatedDate}</div>
+                </div>
+                <div class="detail-row">
+                  <div class="detail-label">Category:</div>
+                  <div class="detail-value">${listing.category || 'Uncategorized'}</div>
+                </div>
+                <div class="detail-row">
+                  <div class="detail-label">Brand:</div>
+                  <div class="detail-value">${listing.brand || 'Not specified'}</div>
+                </div>
+                <div class="detail-row">
+                  <div class="detail-label">Condition:</div>
+                  <div class="detail-value">${listing.condition || 'Not specified'}</div>
+                </div>
+              </div>
+              
+              <div class="listing-description">
+                <h4>Description</h4>
+                <p>${listing.description}</p>
+              </div>
+              
+              <div class="listing-actions">
+                <button id="editFromView" class="primary-button" data-id="${listing.id}">Edit Listing</button>
+                ${listing.status !== 'removed' ? 
+                  `<button id="removeFromView" class="action-button action-delete" data-id="${listing.id}">Remove Listing</button>` : 
+                  ''
+                }
+                <button id="closeViewBtn" class="secondary-button">Close</button>
+              </div>
+            </div>
+          </div>
+        `;
+        
+        // Add styles for the view modal if they don't exist
+        if (!document.getElementById('viewModalStyles')) {
+          const viewModalStyles = document.createElement('style');
+          viewModalStyles.id = 'viewModalStyles';
+          viewModalStyles.textContent = `
+            .view-listing {
+              display: flex;
+              flex-direction: column;
+              gap: 20px;
+            }
+            
+            .image-gallery {
+              width: 100%;
+              height: 240px;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              background-color: var(--background-color);
+              border-radius: 8px;
+              overflow: hidden;
+              margin-bottom: 16px;
+            }
+            
+            .primary-image {
+              width: 100%;
+              height: 100%;
+              object-fit: contain;
+            }
+            
+            .no-image {
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              width: 100%;
+              height: 100%;
+              color: var(--text-secondary);
+              font-size: 14px;
+            }
+            
+            .listing-header {
+              display: flex;
+              flex-direction: column;
+              gap: 8px;
+            }
+            
+            .listing-header h3 {
+              font-size: 20px;
+              font-weight: 600;
+              margin: 0;
+            }
+            
+            .listing-info {
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+            }
+            
+            .price {
+              font-size: 20px;
+              font-weight: 700;
+              color: var(--primary-color);
+            }
+            
+            .listing-details-grid {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 12px;
+              margin: 12px 0;
+            }
+            
+            .detail-row {
+              display: flex;
+              font-size: 14px;
+            }
+            
+            .detail-label {
+              font-weight: 600;
+              min-width: 120px;
+              color: var(--text-secondary);
+            }
+            
+            .detail-value {
+              flex: 1;
+            }
+            
+            .listing-description h4 {
+              font-size: 16px;
+              font-weight: 600;
+              margin-bottom: 8px;
+            }
+            
+            .listing-description p {
+              font-size: 14px;
+              line-height: 1.5;
+              margin: 0;
+              white-space: pre-line;
+            }
+            
+            .listing-actions {
+              display: flex;
+              gap: 12px;
+              margin-top: 24px;
+            }
+          `;
+          document.head.appendChild(viewModalStyles);
+        }
+        
+        // Create and display modal
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.innerHTML = `<div class="modal-content">${modalHTML}</div>`;
+        document.body.appendChild(modal);
+        
+        // Show the modal
+        setTimeout(() => {
+          modal.classList.add('show');
+        }, 10);
+        
+        // Close modal handlers
+        document.getElementById('closeViewModal').addEventListener('click', () => {
+          modal.classList.remove('show');
+          setTimeout(() => modal.remove(), 300);
+        });
+        
+        document.getElementById('closeViewBtn').addEventListener('click', () => {
+          modal.classList.remove('show');
+          setTimeout(() => modal.remove(), 300);
+        });
+        
+        // Edit button handler
+        document.getElementById('editFromView').addEventListener('click', () => {
+          modal.classList.remove('show');
+          setTimeout(() => {
+            modal.remove();
+            editListing(listingId);
+          }, 300);
+        });
+        
+        // Remove button handler (if it exists)
+        const removeBtn = document.getElementById('removeFromView');
+        if (removeBtn) {
+          removeBtn.addEventListener('click', () => {
+            modal.classList.remove('show');
+            setTimeout(() => {
+              modal.remove();
+              removeListing(listingId);
+            }, 300);
+          });
+        }
+      } catch (error) {
+        console.error('Error viewing listing details:', error);
+        alert(`Error: ${error.message}`);
+      }
     }
     
     // Edit Listing
@@ -824,12 +1078,12 @@
                 <div class="image-preview">
                   ${listing.image_url ? 
                     `<div class="image-item">
-                      <img src="https://lsrdviupiuoztnccwdxk.supabase.co/storage/v1/object/public/snaplist-images/uploads/${listing.image_url}" alt="Listing image" onerror="this.src='/static/img/no-image.png'">
+                      <img src="https://lsrdviupiuoztnccwdxk.supabase.co/storage/v1/object/public/snaplist-images/uploads/${listing.image_url}" alt="Listing image" onerror="this.src='/img/logo.png'">
                     </div>` : 
                     (listing.images && listing.images.length > 0 ? 
                       listing.images.map(img => 
                         `<div class="image-item">
-                          <img src="https://lsrdviupiuoztnccwdxk.supabase.co/storage/v1/object/public/snaplist-images/uploads/${img}" alt="Listing image" onerror="this.src='/static/img/no-image.png'">
+                          <img src="https://lsrdviupiuoztnccwdxk.supabase.co/storage/v1/object/public/snaplist-images/uploads/${img}" alt="Listing image" onerror="this.src='/img/logo.png'">
                         </div>`
                       ).join('') : '<span>No images available</span>')
                   }
@@ -1049,30 +1303,127 @@
         return;
       }
       
+      // Show loading indicator
+      const loadingModal = document.createElement('div');
+      loadingModal.className = 'modal';
+      loadingModal.innerHTML = `
+        <div class="modal-content" style="max-width: 300px; text-align: center;">
+          <div class="modal-body">
+            <div class="loading-indicator" style="height: 100px;">
+              <div class="loading-spinner"></div>
+            </div>
+            <p style="margin-top: 20px;">Removing listing...</p>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(loadingModal);
+      setTimeout(() => loadingModal.classList.add('show'), 10);
+      
       try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+        
         const response = await fetch(`/api/admin/listings/${listingId}/status`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ status: 'removed' })
+          body: JSON.stringify({ status: 'removed' }),
+          signal: controller.signal
+        }).catch(err => {
+          if (err.name === 'AbortError') {
+            throw new Error('Request timed out. The server might be unresponsive.');
+          }
+          throw err;
         });
         
+        clearTimeout(timeoutId);
+        
+        // Remove loading modal
+        loadingModal.classList.remove('show');
+        setTimeout(() => loadingModal.remove(), 300);
+        
         if (!response.ok) {
-          throw new Error('Failed to remove listing');
+          if (response.status === 404) {
+            throw new Error('Listing not found. It may have been already removed.');
+          } else if (response.status === 500) {
+            throw new Error('Server error. Please try again later.');
+          } else {
+            throw new Error(`Server responded with status: ${response.status}`);
+          }
         }
         
         const data = await response.json();
         
         if (data.success) {
-          alert('Listing removed successfully');
-          fetchListings(); // Refresh the list
+          // Create success modal
+          const successModal = document.createElement('div');
+          successModal.className = 'modal';
+          successModal.innerHTML = `
+            <div class="modal-content" style="max-width: 300px; text-align: center;">
+              <div class="modal-body">
+                <div style="color: var(--success-color); font-size: 48px; margin-bottom: 16px;">✓</div>
+                <p style="margin-bottom: 20px;">Listing removed successfully</p>
+                <button id="successCloseBtn" class="primary-button">Continue</button>
+              </div>
+            </div>
+          `;
+          document.body.appendChild(successModal);
+          
+          setTimeout(() => {
+            successModal.classList.add('show');
+          }, 10);
+          
+          document.getElementById('successCloseBtn').addEventListener('click', () => {
+            successModal.classList.remove('show');
+            setTimeout(() => {
+              successModal.remove();
+              fetchListings(); // Refresh the list
+            }, 300);
+          });
         } else {
           throw new Error(data.message || 'Failed to remove listing');
         }
       } catch (error) {
         console.error('Error removing listing:', error);
-        alert(`Error removing listing: ${error.message}`);
+        
+        // Remove loading modal if it's still visible
+        loadingModal.classList.remove('show');
+        setTimeout(() => loadingModal.remove(), 300);
+        
+        // Show error modal
+        const errorModal = document.createElement('div');
+        errorModal.className = 'modal';
+        errorModal.innerHTML = `
+          <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+              <h2>Error</h2>
+              <button id="closeErrorModal" class="close-button">&times;</button>
+            </div>
+            <div class="modal-body">
+              <div style="padding: 20px; text-align: center;">
+                <div style="color: var(--danger-color); font-size: 24px; margin-bottom: 16px;">⚠️</div>
+                <p style="margin-bottom: 20px;">Error removing listing: ${error.message}</p>
+                <button id="errorCloseBtn" class="secondary-button">Close</button>
+              </div>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(errorModal);
+        
+        setTimeout(() => {
+          errorModal.classList.add('show');
+        }, 10);
+        
+        document.getElementById('closeErrorModal').addEventListener('click', () => {
+          errorModal.classList.remove('show');
+          setTimeout(() => errorModal.remove(), 300);
+        });
+        
+        document.getElementById('errorCloseBtn').addEventListener('click', () => {
+          errorModal.classList.remove('show');
+          setTimeout(() => errorModal.remove(), 300);
+        });
       }
     }
     

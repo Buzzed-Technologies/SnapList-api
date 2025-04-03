@@ -876,9 +876,49 @@
     // View Payout
     async function viewPayout(payoutId) {
       try {
-        const response = await fetch(`/api/admin/payouts/${payoutId}`);
+        // Show loading indicator
+        const loadingModal = document.createElement('div');
+        loadingModal.className = 'modal';
+        loadingModal.innerHTML = `
+          <div class="modal-content" style="max-width: 300px; text-align: center;">
+            <div class="modal-body">
+              <div class="loading-indicator" style="height: 100px;">
+                <div class="loading-spinner"></div>
+              </div>
+              <p style="margin-top: 20px;">Loading payout details...</p>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(loadingModal);
+        setTimeout(() => loadingModal.classList.add('show'), 10);
+        
+        // Fetch data with timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+        
+        const response = await fetch(`/api/admin/payouts/${payoutId}`, {
+          signal: controller.signal
+        }).catch(err => {
+          if (err.name === 'AbortError') {
+            throw new Error('Request timed out. The server might be unresponsive.');
+          }
+          throw err;
+        });
+        
+        clearTimeout(timeoutId);
+        
+        // Remove loading modal
+        loadingModal.classList.remove('show');
+        setTimeout(() => loadingModal.remove(), 300);
+        
         if (!response.ok) {
-          throw new Error('Failed to fetch payout details');
+          if (response.status === 404) {
+            throw new Error('Payout not found. It may have been deleted or processed.');
+          } else if (response.status === 500) {
+            throw new Error('Server error. Please try again later.');
+          } else {
+            throw new Error(`Server responded with status: ${response.status}`);
+          }
         }
         
         const data = await response.json();
@@ -886,7 +926,15 @@
           throw new Error(data.message || 'Failed to fetch payout details');
         }
         
-        const payout = data.payout;
+        const payout = data.payout || {
+          id: payoutId,
+          user_name: 'Unknown',
+          amount: 0,
+          items_count: 0,
+          phone: 'Not available',
+          created_at: new Date(),
+          status: 'pending'
+        };
         
         // Format the amount
         const amount = new Intl.NumberFormat('en-US', { 
@@ -967,6 +1015,60 @@
           const modalStyles = document.createElement('style');
           modalStyles.id = 'payoutModalStyles';
           modalStyles.textContent = `
+            .modal {
+              display: flex;
+              position: fixed;
+              top: 0;
+              left: 0;
+              right: 0;
+              bottom: 0;
+              background-color: rgba(0, 0, 0, 0.5);
+              z-index: 1000;
+              opacity: 0;
+              pointer-events: none;
+              transition: opacity 0.3s ease;
+              justify-content: center;
+              align-items: center;
+            }
+            
+            .modal.show {
+              opacity: 1;
+              pointer-events: auto;
+            }
+            
+            .modal-content {
+              background-color: var(--card-background);
+              border-radius: 12px;
+              width: 90%;
+              max-width: 500px;
+              box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            }
+            
+            .modal-header {
+              padding: 16px 20px;
+              border-bottom: 1px solid var(--border-color);
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+            }
+            
+            .modal-header h2 {
+              font-size: 18px;
+              font-weight: 600;
+            }
+            
+            .close-button {
+              background: none;
+              border: none;
+              font-size: 24px;
+              cursor: pointer;
+              color: var(--text-secondary);
+            }
+            
+            .modal-body {
+              padding: 20px;
+            }
+            
             .payout-detail {
               margin-bottom: 24px;
               background-color: var(--background-color);
@@ -1027,6 +1129,33 @@
               text-align: center;
               color: var(--text-secondary);
             }
+            
+            .form-actions {
+              display: flex;
+              justify-content: flex-end;
+              gap: 12px;
+              margin-top: 20px;
+            }
+            
+            .primary-button {
+              background-color: var(--primary-color);
+              color: white;
+              border: none;
+              padding: 10px 16px;
+              border-radius: 6px;
+              font-weight: 500;
+              cursor: pointer;
+            }
+            
+            .secondary-button {
+              background-color: var(--background-color);
+              color: var(--text-primary);
+              border: 1px solid var(--border-color);
+              padding: 10px 16px;
+              border-radius: 6px;
+              font-weight: 500;
+              cursor: pointer;
+            }
           `;
           document.head.appendChild(modalStyles);
         }
@@ -1042,8 +1171,13 @@
           modal.classList.add('show');
         }, 10);
         
-        // Load payout items 
-        fetchPayoutItems(payoutId);
+        // Load payout items (with error handling)
+        try {
+          fetchPayoutItems(payoutId);
+        } catch (err) {
+          console.error('Error loading payout items:', err);
+          document.getElementById('payoutItems').innerHTML = '<li class="loading-item">Could not load items. Please try again later.</li>';
+        }
         
         // Close modal handlers
         document.getElementById('closeViewModal').addEventListener('click', () => {
@@ -1067,16 +1201,66 @@
         }
       } catch (error) {
         console.error('Error viewing payout details:', error);
-        alert(`Error: ${error.message}`);
+        
+        // Create and show error modal
+        const errorModal = document.createElement('div');
+        errorModal.className = 'modal';
+        errorModal.innerHTML = `
+          <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+              <h2>Error</h2>
+              <button id="closeErrorModal" class="close-button">&times;</button>
+            </div>
+            <div class="modal-body">
+              <div style="padding: 20px; text-align: center;">
+                <div style="color: var(--danger-color); font-size: 24px; margin-bottom: 16px;">⚠️</div>
+                <p style="margin-bottom: 20px;">Error viewing payout details: ${error.message}</p>
+                <button id="errorCloseBtn" class="secondary-button">Close</button>
+              </div>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(errorModal);
+        
+        setTimeout(() => {
+          errorModal.classList.add('show');
+        }, 10);
+        
+        document.getElementById('closeErrorModal').addEventListener('click', () => {
+          errorModal.classList.remove('show');
+          setTimeout(() => errorModal.remove(), 300);
+        });
+        
+        document.getElementById('errorCloseBtn').addEventListener('click', () => {
+          errorModal.classList.remove('show');
+          setTimeout(() => errorModal.remove(), 300);
+        });
       }
     }
     
     // Fetch Payout Items
     async function fetchPayoutItems(payoutId) {
       try {
-        const response = await fetch(`/api/admin/payouts/${payoutId}/items`);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+        
+        const response = await fetch(`/api/admin/payouts/${payoutId}/items`, {
+          signal: controller.signal
+        }).catch(err => {
+          if (err.name === 'AbortError') {
+            throw new Error('Request timed out while loading items');
+          }
+          throw err;
+        });
+        
+        clearTimeout(timeoutId);
+        
         if (!response.ok) {
-          throw new Error('Failed to fetch payout items');
+          if (response.status === 404) {
+            throw new Error('No items found for this payout');
+          } else {
+            throw new Error(`Server responded with status: ${response.status}`);
+          }
         }
         
         const data = await response.json();
@@ -1085,8 +1269,12 @@
         }
         
         const itemsList = document.getElementById('payoutItems');
+        if (!itemsList) {
+          console.warn('Items list element not found in DOM');
+          return;
+        }
         
-        if (data.items.length === 0) {
+        if (!data.items || data.items.length === 0) {
           itemsList.innerHTML = '<li class="loading-item">No items found for this payout</li>';
           return;
         }
@@ -1099,13 +1287,13 @@
           // Get the image URL or use a placeholder
           const imageUrl = item.image_url 
             ? `https://lsrdviupiuoztnccwdxk.supabase.co/storage/v1/object/public/snaplist-images/uploads/${item.image_url}` 
-            : '/static/img/no-image.png';
+            : '/img/logo.png';
           
           itemEl.innerHTML = `
-            <img src="${imageUrl}" alt="${item.title}" class="item-thumbnail" onerror="this.src='/static/img/no-image.png'">
+            <img src="${imageUrl}" alt="${item.title || 'Item'}" class="item-thumbnail" onerror="this.src='/img/logo.png'">
             <div class="item-details">
-              <div class="item-title">${item.title}</div>
-              <div class="item-price">$${item.price.toFixed(2)}</div>
+              <div class="item-title">${item.title || 'Unnamed item'}</div>
+              <div class="item-price">$${(item.price || 0).toFixed(2)}</div>
             </div>
           `;
           
@@ -1113,9 +1301,12 @@
         });
       } catch (error) {
         console.error('Error fetching payout items:', error);
-        document.getElementById('payoutItems').innerHTML = `
-          <li class="loading-item">Error loading items: ${error.message}</li>
-        `;
+        const itemsList = document.getElementById('payoutItems');
+        if (itemsList) {
+          itemsList.innerHTML = `
+            <li class="loading-item">Error loading items: ${error.message}</li>
+          `;
+        }
       }
     }
     
@@ -1219,12 +1410,6 @@
       
       fetchPayoutStats();
       fetchPayouts();
-      
-      // Process All button
-      document.querySelector('.section-action').addEventListener('click', function(e) {
-        e.preventDefault();
-        processAllPendingPayouts();
-      });
     });
   </script>
 </body>
