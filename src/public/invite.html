@@ -9,6 +9,46 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" href="/static/img/logo.png">
+  <script>
+    // Function to check if on iOS device
+    function isIOS() {
+      return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    }
+    
+    // Function to open app or App Store
+    function openAppOrStore() {
+      if (isIOS()) {
+        // App Store URL
+        const appStoreUrl = 'https://apps.apple.com/us/app/snaplist-snap-list-sell/id6744180992';
+        
+        // App URL scheme (replace with your actual URL scheme)
+        const appUrl = 'snaplist://';
+        
+        // Create an iframe to try opening the app
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        
+        // Set timeout to redirect to App Store if app isn't installed
+        const timeout = setTimeout(() => {
+          window.location.href = appStoreUrl;
+        }, 500);
+        
+        // Try to open the app
+        iframe.onload = function() {
+          clearTimeout(timeout);
+        };
+        
+        // If we get here, app isn't installed
+        iframe.src = appUrl;
+        document.body.appendChild(iframe);
+      }
+    }
+    
+    // Run when page loads
+    window.onload = function() {
+      openAppOrStore();
+    };
+  </script>
   <style>
     .invite-container {
       background-color: var(--card-background);
