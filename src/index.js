@@ -14,6 +14,7 @@ const imagesRoutes = require('./routes/images');
 const payoutsRoutes = require('./routes/payouts');
 const shareRoutes = require('./routes/share');
 const adminRoutes = require('./routes/admin');
+const ebayWebhooksRoutes = require('./routes/ebayWebhooks');
 
 // Import price reduction service
 const { schedulePriceReductions } = require('./services/priceService');
@@ -127,6 +128,7 @@ app.use('/api/images', imagesRoutes);
 app.use('/api/payouts', payoutsRoutes);
 app.use('/share', shareRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/ebay-webhooks', ebayWebhooksRoutes);
 
 // Admin pages routes
 app.get('/admin', (req, res) => {

@@ -61,6 +61,10 @@
       "dest": "src/index.js"
     },
     {
+      "src": "/api/ebay-webhooks/(.*)",
+      "dest": "src/index.js"
+    },
+    {
       "src": "/api/(.*)",
       "dest": "src/index.js"
     },
