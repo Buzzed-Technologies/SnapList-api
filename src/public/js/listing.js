@@ -73,9 +73,10 @@ function renderListing(listing, priceHistory) {
   renderImageCarousel(listing.image_urls);
   
   // Show marketplace links if available
-  if (listing.ebay_listing_id && listing.listing_url) {
+  if (listing.ebay_listing_id) {
     const ebayLink = document.getElementById('ebay-link');
-    ebayLink.href = listing.listing_url;
+    // Use listing_url if available, otherwise construct from eBay ID
+    ebayLink.href = listing.listing_url || `https://www.ebay.com/itm/${listing.ebay_listing_id}`;
     ebayLink.style.display = 'inline-flex';
   }
   
