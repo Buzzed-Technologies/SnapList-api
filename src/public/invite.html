@@ -144,10 +144,21 @@
     
     .download-button img {
       height: 60px;
+      object-fit: contain;
+      width: auto;
+    }
+    
+    /* Specific adjustment for Play Store badge to match App Store badge size */
+    #android-button img {
+      height: 70px; /* Slightly taller to match visual weight */
     }
     
     .download-buttons-container {
       margin: 20px auto;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 20px;
     }
     
     .features-section {
