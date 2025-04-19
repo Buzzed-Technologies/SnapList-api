@@ -15,84 +15,38 @@
       return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     }
     
-    // Function to check if on Android device
-    function isAndroid() {
-      return /Android/.test(navigator.userAgent);
-    }
-    
-    // Function to open app or App Store (iOS)
-    function openIOSApp() {
-      // App Store URL
-      const appStoreUrl = 'https://apps.apple.com/us/app/snaplist-snap-list-sell/id6744180992';
-      
-      // App URL scheme
-      const appUrl = 'snaplist://';
-      
-      // Create an iframe to try opening the app
-      const iframe = document.createElement('iframe');
-      iframe.style.display = 'none';
-      
-      // Set timeout to redirect to App Store if app isn't installed
-      const timeout = setTimeout(() => {
-        window.location.href = appStoreUrl;
-      }, 500);
-      
-      // Try to open the app
-      iframe.onload = function() {
-        clearTimeout(timeout);
-      };
-      
-      // If we get here, app isn't installed
-      iframe.src = appUrl;
-      document.body.appendChild(iframe);
-    }
-    
-    // Function to open app or Play Store (Android)
-    function openAndroidApp() {
-      // Play Store URL
-      const playStoreUrl = 'https://play.google.com/store/apps/details?id=com.buzzedtech.snaplist_android';
-      
-      // App URL scheme
-      const appUrl = 'snaplist://';
-      
-      // Try to open the app, if it fails, open Play Store
-      try {
-        // Attempt to open the app
-        window.location.href = appUrl;
-        
-        // Set timeout to redirect to Play Store if app isn't installed
-        setTimeout(() => {
-          window.location.href = playStoreUrl;
-        }, 500);
-      } catch (e) {
-        // If error occurs, open Play Store
-        window.location.href = playStoreUrl;
-      }
-    }
-    
-    // Function to show appropriate store button based on device
-    function showAppropriateButton() {
-      const iosButton = document.getElementById('ios-button');
-      const androidButton = document.getElementById('android-button');
-      
+    // Function to open app or App Store
+    function openAppOrStore() {
       if (isIOS()) {
-        iosButton.style.display = 'inline-block';
-        androidButton.style.display = 'none';
-        openIOSApp();
-      } else if (isAndroid()) {
-        iosButton.style.display = 'none';
-        androidButton.style.display = 'inline-block';
-        openAndroidApp();
-      } else {
-        // On desktop or other device, show both buttons
-        iosButton.style.display = 'inline-block';
-        androidButton.style.display = 'inline-block';
+        // App Store URL
+        const appStoreUrl = 'https://apps.apple.com/us/app/snaplist-snap-list-sell/id6744180992';
+        
+        // App URL scheme (replace with your actual URL scheme)
+        const appUrl = 'snaplist://';
+        
+        // Create an iframe to try opening the app
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        
+        // Set timeout to redirect to App Store if app isn't installed
+        const timeout = setTimeout(() => {
+          window.location.href = appStoreUrl;
+        }, 500);
+        
+        // Try to open the app
+        iframe.onload = function() {
+          clearTimeout(timeout);
+        };
+        
+        // If we get here, app isn't installed
+        iframe.src = appUrl;
+        document.body.appendChild(iframe);
       }
     }
     
     // Run when page loads
     window.onload = function() {
-      showAppropriateButton();
+      openAppOrStore();
     };
   </script>
   <style>
@@ -134,7 +88,7 @@
     
     .download-button {
       display: inline-block;
-      margin: 10px;
+      margin: 20px auto;
       transition: transform 0.2s ease;
     }
     
@@ -144,21 +98,6 @@
     
     .download-button img {
       height: 60px;
-      object-fit: contain;
-      width: auto;
-    }
-    
-    /* Specific adjustment for Play Store badge to match App Store badge size */
-    #android-button img {
-      height: 70px; /* Slightly taller to match visual weight */
-    }
-    
-    .download-buttons-container {
-      margin: 20px auto;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 20px;
     }
     
     .features-section {
@@ -222,15 +161,9 @@
           <p>Snap, List, and Sell with ease. Join thousands of users who are simplifying the way they sell their items online.</p>
         </div>
         
-        <div class="download-buttons-container">
-          <a href="https://apps.apple.com/us/app/snaplist-snap-list-sell/id6744180992" id="ios-button" class="download-button" target="_blank" rel="noopener noreferrer">
-            <img src="/static/img/app-store-badge.svg" alt="Download on the App Store">
-          </a>
-          
-          <a href="https://play.google.com/store/apps/details?id=com.buzzedtech.snaplist_android" id="android-button" class="download-button" target="_blank" rel="noopener noreferrer">
-            <img src="/static/img/play-store-badge.png" alt="Get it on Google Play">
-          </a>
-        </div>
+        <a href="https://apps.apple.com/us/app/snaplist-snap-list-sell/id6744180992" class="download-button" target="_blank" rel="noopener noreferrer">
+          <img src="/static/img/app-store-badge.svg" alt="Download on the App Store">
+        </a>
         
         <div class="features-section">
           <div class="feature-card">
