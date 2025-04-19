@@ -532,6 +532,91 @@
       background-color: var(--primary-color);
       color: white;
     }
+    
+    .marketplace-links {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    
+    .marketplace-link {
+      display: inline-block;
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      text-decoration: none;
+      color: white;
+      font-weight: 500;
+    }
+    
+    .marketplace-link.ebay {
+      background-color: #e53238;
+    }
+    
+    .marketplace-link.fb {
+      background-color: #1877f2;
+    }
+
+    .detail-value {
+      flex: 1;
+    }
+
+    .marketplace-view-links {
+      margin: 16px 0;
+      padding: 16px;
+      background-color: var(--background-color);
+      border-radius: 8px;
+    }
+
+    .marketplace-view-links h4 {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: var(--text-secondary);
+    }
+
+    .marketplace-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .marketplace-view-button {
+      display: inline-flex;
+      align-items: center;
+      padding: 8px 14px;
+      border-radius: 6px;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .marketplace-icon {
+      margin-right: 8px;
+      font-size: 16px;
+    }
+
+    .ebay-button {
+      background-color: #e53238;
+      color: white;
+    }
+
+    .facebook-button {
+      background-color: #1877f2;
+      color: white;
+    }
+
+    .marketplace-view-button:hover {
+      opacity: 0.9;
+      transform: translateY(-2px);
+    }
+
+    .listing-description h4 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
   </style>
 </head>
 <body>
@@ -854,6 +939,10 @@
               <div class="listing-date">${listedDate}</div>
             </div>
             <span class="listing-status ${statusClass}">${listing.status.charAt(0).toUpperCase() + listing.status.slice(1)}</span>
+            <div class="marketplace-links">
+              ${listing.ebay_url ? `<a href="${listing.ebay_url}" target="_blank" class="marketplace-link ebay">eBay</a>` : ''}
+              ${listing.facebook_url ? `<a href="${listing.facebook_url}" target="_blank" class="marketplace-link fb">FB</a>` : ''}
+            </div>
             <div class="listing-actions">
               <button class="action-button action-view" data-id="${listing.id}">View</button>
               <button class="action-button action-edit" data-id="${listing.id}">Edit</button>
@@ -1057,6 +1146,26 @@
                   <div class="detail-value">${listing.condition || 'Not specified'}</div>
                 </div>
               </div>
+              
+              ${(listing.ebay_url || listing.facebook_url) ? `
+              <div class="marketplace-view-links">
+                <h4>Available on</h4>
+                <div class="marketplace-buttons">
+                  ${listing.ebay_url ? `
+                    <a href="${listing.ebay_url}" target="_blank" class="marketplace-view-button ebay-button">
+                      <span class="marketplace-icon">🛍️</span>
+                      View on eBay
+                    </a>
+                  ` : ''}
+                  ${listing.facebook_url ? `
+                    <a href="${listing.facebook_url}" target="_blank" class="marketplace-view-button facebook-button">
+                      <span class="marketplace-icon">👥</span>
+                      View on Facebook Marketplace
+                    </a>
+                  ` : ''}
+                </div>
+              </div>
+              ` : ''}
               
               <div class="listing-description">
                 <h4>Description</h4>
@@ -1275,6 +1384,14 @@
                 </select>
               </div>
               <div class="form-group">
+                <label for="ebay_url">eBay URL</label>
+                <input type="url" id="ebay_url" name="ebay_url" value="${listing.ebay_url || ''}">
+              </div>
+              <div class="form-group">
+                <label for="facebook_url">Facebook Marketplace URL</label>
+                <input type="url" id="facebook_url" name="facebook_url" value="${listing.facebook_url || ''}">
+              </div>
+              <div class="form-group">
                 <label>Images</label>
                 <div class="image-preview">
                   ${listing.image_url ? 
@@ -1468,7 +1585,9 @@
               title: document.getElementById('title').value,
               description: document.getElementById('description').value,
               price: parseFloat(document.getElementById('price').value),
-              status: document.getElementById('status').value
+              status: document.getElementById('status').value,
+              ebay_url: document.getElementById('ebay_url').value.trim(),
+              facebook_url: document.getElementById('facebook_url').value.trim()
             };
             
             const updateResponse = await fetch(`/api/admin/listings/${listingId}`, {
